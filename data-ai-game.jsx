@@ -1,0 +1,1479 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+// ═══════════════════════════════════════════
+// DATA / IA — TERMINAL GAME
+// ═══════════════════════════════════════════
+
+const PROFILES = {
+  beginner: {
+    label: "🟢 Débutant",
+    desc: "Data Analyst Junior",
+    color: "#22c55e",
+    levels: [0, 1, 2, 3, 4, 5],
+  },
+  intermediate: {
+    label: "🟡 Intermédiaire",
+    desc: "Data Scientist",
+    color: "#f59e0b",
+    levels: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  },
+  expert: {
+    label: "🔴 Expert",
+    desc: "ML Engineer",
+    color: "#ef4444",
+    levels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+  },
+};
+
+// Shuffle helper
+const shuffle = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// ═══════════════════════════════════════════
+// LEVEL DEFINITIONS
+// ═══════════════════════════════════════════
+
+const buildLevels = () => {
+  // Level 0 — Types de données
+  const typeQuestions = shuffle([
+    {
+      data: '["Alice", 28, "Paris", true]',
+      q: "Quel type de structure est-ce ?",
+      a: ["list", "liste", "array", "tableau"],
+      explain:
+        "Une liste (ou array) est une collection ordonnée d'éléments de types variés.",
+    },
+    {
+      data: '{"nom": "Alice", "age": 28, "ville": "Paris"}',
+      q: "Quel type de structure est-ce ?",
+      a: ["dict", "dictionnaire", "dictionary", "json", "objet", "object"],
+      explain:
+        "Un dictionnaire (dict) stocke des paires clé-valeur. Format JSON = standard d'échange de données.",
+    },
+    {
+      data: "nom,age,ville\nAlice,28,Paris\nBob,35,Lyon",
+      q: "Quel format de fichier est-ce ?",
+      a: ["csv"],
+      explain:
+        "CSV = Comma Separated Values. Format tabulaire simple, lisible par Excel, Pandas, etc.",
+    },
+  ]);
+  const tq = typeQuestions[0];
+
+  // Level 1 — SQL basics
+  const sqlQuestions = shuffle([
+    {
+      table:
+        "TABLE clients (id, nom, age, ville, achats)\n  1 | Alice  | 28 | Paris | 12\n  2 | Bob    | 35 | Lyon  |  3\n  3 | Clara  | 22 | Paris | 27\n  4 | David  | 45 | Lille |  8",
+      q: "Écrivez une requête pour obtenir les noms des clients de Paris.",
+      a: [
+        "select nom from clients where ville = 'paris'",
+        "select nom from clients where ville='paris'",
+        'select nom from clients where ville = "paris"',
+        'select nom from clients where ville="paris"',
+      ],
+      explain:
+        "SELECT <colonnes> FROM <table> WHERE <condition> — la base de toute requête SQL.",
+    },
+    {
+      table:
+        "TABLE produits (id, nom, prix, stock, categorie)\n  1 | Laptop  | 999 | 15 | Tech\n  2 | Clavier |  49 | 82 | Tech\n  3 | Cahier  |   5 | 200| Bureau\n  4 | Écran   | 350 |  7 | Tech",
+      q: "Écrivez une requête pour compter les produits par catégorie.",
+      a: [
+        "select categorie, count(*) from produits group by categorie",
+        "select categorie,count(*) from produits group by categorie",
+      ],
+      explain:
+        "GROUP BY regroupe les lignes par valeur. COUNT(*) compte les lignes de chaque groupe.",
+    },
+  ]);
+  const sq = sqlQuestions[0];
+
+  // Level 2 — Data Cleaning
+  const cleanQuestions = shuffle([
+    {
+      dataset:
+        "nom    | age  | salaire\nAlice  | 28   | 35000\nBob    | -5   | 42000\nClara  | 31   | NaN\nDavid  | 999  | 28000\n???    | 27   | 31000",
+      q: "Combien de valeurs problématiques voyez-vous ? Tapez le nombre.",
+      a: ["4"],
+      problems: [
+        "age = -5 (négatif impossible)",
+        "salaire = NaN (valeur manquante)",
+        "age = 999 (outlier aberrant)",
+        "nom = ??? (donnée invalide)",
+      ],
+      explain:
+        "Le nettoyage de données = 80% du travail d'un data scientist. Il faut détecter : valeurs manquantes (NaN/null), outliers, données invalides, doublons.",
+    },
+    {
+      dataset:
+        "email             | date_inscription | pays\nalice@mail.com    | 2024-01-15      | France\nbob@mail          | 15/01/2024      | france\nalice@mail.com    | 2024-01-15      | FR\nclara@mail.com    | 2024-13-01      | NULL",
+      q: "Combien de problèmes de qualité voyez-vous ? Tapez le nombre.",
+      a: ["5", "6"],
+      problems: [
+        "bob@mail — email invalide (pas de domaine)",
+        "Formats de date incohérents (YYYY-MM-DD vs DD/MM/YYYY)",
+        "Doublon : alice@mail.com apparaît 2 fois",
+        "Pays incohérent : France, france, FR (normalisation)",
+        "Date invalide : mois 13 n'existe pas",
+        "NULL = valeur manquante",
+      ],
+      explain:
+        "Qualité des données : cohérence des formats, doublons, validation (emails, dates), normalisation des catégories.",
+    },
+  ]);
+  const cq = cleanQuestions[0];
+
+  // Level 3 — Statistiques descriptives
+  const statQuestions = shuffle([
+    {
+      data: "Revenus mensuels (€) : 2100, 2300, 2200, 2400, 2100, 8500, 2300",
+      q: "Quelle mesure de tendance centrale est la plus représentative ici : moyenne ou médiane ?",
+      a: ["mediane", "médiane", "median"],
+      explain:
+        "La médiane (2300€) résiste aux outliers. La moyenne (3129€) est tirée vers le haut par 8500€. Quand il y a des valeurs extrêmes → toujours préférer la médiane.",
+    },
+    {
+      data: "Notes d'examen : 8, 12, 14, 15, 13, 11, 14, 9, 13, 12",
+      q: "Quel est l'écart-type approximatif ? Tapez 'faible' (< 3) ou 'fort' (> 3).",
+      a: ["faible"],
+      explain:
+        "L'écart-type mesure la dispersion. Ici les notes sont groupées entre 8-15 avec une moyenne ~12.1, l'écart-type ≈ 2.1 → dispersion faible, groupe homogène.",
+    },
+  ]);
+  const stq = statQuestions[0];
+
+  // Level 4 — Visualisation
+  const vizQuestions = shuffle([
+    {
+      scenario:
+        "Vous voulez montrer l'évolution du chiffre d'affaires mois par mois sur 2024.",
+      q: "Quel type de graphique est le plus adapté ? (line/bar/pie/scatter)",
+      a: ["line", "ligne", "line chart"],
+      explain:
+        "Line chart = évolution temporelle. Bar = comparaison catégories. Pie = proportions (à éviter souvent). Scatter = corrélation entre 2 variables.",
+    },
+    {
+      scenario:
+        "Vous voulez comparer la répartition homme/femme dans 5 départements.",
+      q: "Quel type de graphique ? (line/bar/pie/scatter/stacked bar)",
+      a: ["stacked bar", "bar", "stacked", "bar chart"],
+      explain:
+        "Stacked bar chart = idéal pour comparer des compositions entre catégories. Bar groupé marche aussi.",
+    },
+  ]);
+  const vq = vizQuestions[0];
+
+  // Level 5 — Train/Test Split
+  const splitQuestion = {
+    scenario:
+      "Vous avez 1000 lignes de données pour prédire si un client va churner.\nVous entraînez votre modèle sur les 1000 lignes.\nAccuracy sur ces données : 98%.\nAccuracy en production : 52%.",
+    q: "Quel est le problème principal ? Tapez le terme technique.",
+    a: ["overfitting", "sur-apprentissage", "surapprentissage", "overfit"],
+    explain:
+      "OVERFITTING = le modèle a mémorisé les données d'entraînement au lieu d'apprendre les patterns. Solution : toujours séparer train/test (typiquement 80/20), utiliser la validation croisée.",
+  };
+
+  // Level 6 — Métriques ML
+  const metricQuestions = shuffle([
+    {
+      scenario:
+        "Détection de fraude bancaire :\n  - Votre modèle prédit 100 transactions\n  - 90 prédites « légitimes » → 85 vraies, 5 étaient des fraudes\n  - 10 prédites « fraude » → 8 vraies fraudes, 2 faux positifs",
+      q: "Le recall (rappel) pour la classe 'fraude' est de combien ? (en %)",
+      a: ["61", "61%", "62", "62%"],
+      explain:
+        "Recall = Vrais Positifs / (Vrais Positifs + Faux Négatifs) = 8 / (8+5) ≈ 61.5%. En détection de fraude, le recall est crucial : rater une fraude coûte plus cher qu'un faux positif.",
+    },
+    {
+      scenario:
+        "Diagnostic médical (cancer) :\n  - 200 patients testés\n  - 180 prédits sains → 175 vrais, 5 avaient un cancer\n  - 20 prédits malades → 15 vrais cancers, 5 faux positifs",
+      q: "La précision pour la classe 'cancer' est de combien ? (en %)",
+      a: ["75", "75%"],
+      explain:
+        "Précision = VP / (VP + FP) = 15 / (15+5) = 75%. Mais attention : le recall = 15/(15+5 manqués) = 75% aussi ici. En médical, on privilégie souvent le recall (ne pas rater de malades).",
+    },
+  ]);
+  const mq = metricQuestions[0];
+
+  // Level 7 — Feature Engineering
+  const feQuestions = shuffle([
+    {
+      dataset:
+        "Pour prédire le prix d'un appartement :\n  surface_m2 | nb_pieces | adresse             | date_construction\n  65         | 3         | 12 rue Victor Hugo  | 1985\n  42         | 2         | 8 av des Champs     | 2010",
+      q: "Quelle nouvelle feature pourriez-vous créer à partir de 'adresse' pour le modèle ? Tapez le concept.",
+      a: [
+        "quartier",
+        "arrondissement",
+        "code postal",
+        "ville",
+        "zone",
+        "localisation",
+        "geolocalisation",
+        "latitude",
+        "longitude",
+        "coordonnees",
+        "district",
+      ],
+      explain:
+        "Feature engineering = créer de nouvelles variables utiles. Une adresse brute est inutilisable → extraire le quartier, code postal, ou géocoder en lat/long. Aussi : 'ancienneté' = 2024 - date_construction.",
+    },
+  ]);
+  const feq = feQuestions[0];
+
+  // Level 8 — Algorithmes ML
+  const algoQuestions = shuffle([
+    {
+      scenario:
+        "Vous devez classer des emails en spam/pas spam.\nVous avez 50 000 emails labellisés.\nLes features sont : nb_mots, nb_liens, contient_mot('gratuit'), heure_envoi, etc.",
+      q: "Quel type de problème ML est-ce ? (classification/regression/clustering)",
+      a: ["classification"],
+      explain:
+        "Classification = prédire une catégorie (spam/pas spam). Régression = prédire une valeur continue (prix). Clustering = regrouper sans labels (segmentation clients).",
+    },
+    {
+      scenario:
+        "Vous avez 10 000 clients avec leurs comportements d'achat.\nPas de labels. Vous voulez identifier des segments de clientèle.",
+      q: "Quel type de problème ML ? (classification/regression/clustering)",
+      a: ["clustering"],
+      explain:
+        "Clustering = apprentissage non supervisé. Pas de labels → on cherche des groupes naturels. Algorithmes : K-Means, DBSCAN, hiérarchique.",
+    },
+  ]);
+  const aq = algoQuestions[0];
+
+  // Level 9 — Bias & Ethics
+  const biasQuestions = shuffle([
+    {
+      scenario:
+        "Un modèle de recrutement IA est entraîné sur 10 ans d'historique d'embauche.\nL'entreprise a historiquement embauché 85% d'hommes.\nLe modèle obtient 92% d'accuracy sur le test set.",
+      q: "Quel est le risque principal ? Tapez le concept.",
+      a: [
+        "biais",
+        "bias",
+        "discrimination",
+        "biais de selection",
+        "biais historique",
+        "biais de genre",
+      ],
+      explain:
+        "BIAIS DE DONNÉES → Le modèle reproduit les discriminations historiques. 92% d'accuracy ne signifie rien si le modèle est biaisé. Solutions : audit de fairness, données équilibrées, features protégées exclues, métriques par sous-groupe.",
+    },
+  ]);
+  const bq = biasQuestions[0];
+
+  // Level 10 — Deep Learning
+  const dlQuestions = shuffle([
+    {
+      scenario:
+        "Réseau de neurones pour classification d'images :\n  Input: image 28x28 pixels (niveaux de gris)\n  Hidden layer 1: 128 neurones, ReLU\n  Hidden layer 2: 64 neurones, ReLU\n  Output: 10 neurones, Softmax",
+      q: "Pourquoi Softmax en sortie et pas ReLU ? (1 mot clé)",
+      a: [
+        "probabilite",
+        "probabilites",
+        "probabilité",
+        "probabilités",
+        "proba",
+        "distribution",
+      ],
+      explain:
+        "Softmax convertit les scores en probabilités (somme = 1). Chaque neurone de sortie = probabilité d'une classe. ReLU est pour les couches cachées (introduit la non-linéarité).",
+    },
+    {
+      scenario:
+        "Vous entraînez un CNN sur ImageNet (1.2M images, 1000 classes).\nÉpoque 1: loss=4.2, accuracy=8%\nÉpoque 50: train_loss=0.3, train_acc=95%, val_loss=2.1, val_acc=62%",
+      q: "Que se passe-t-il à l'époque 50 ?",
+      a: ["overfitting", "sur-apprentissage", "surapprentissage", "overfit"],
+      explain:
+        "Train acc 95% mais val acc 62% = overfitting massif. Le gap train/val est le signal. Solutions : dropout, data augmentation, early stopping, régularisation L2, plus de données.",
+    },
+  ]);
+  const dlq = dlQuestions[0];
+
+  // Level 11 — Pipeline & MLOps
+  const mlopsQuestions = shuffle([
+    {
+      scenario:
+        "Votre modèle de recommandation est en production depuis 6 mois.\nPerformance initiale : precision@10 = 0.42\nPerformance actuelle : precision@10 = 0.28\nAucune modification du code.",
+      q: "Quel phénomène explique cette dégradation ? (terme technique)",
+      a: [
+        "data drift",
+        "drift",
+        "concept drift",
+        "model drift",
+        "distribution shift",
+        "derive",
+        "dérive",
+      ],
+      explain:
+        "DATA DRIFT = les données réelles changent avec le temps (nouveaux produits, tendances, comportements). Le modèle entraîné sur d'anciennes données devient obsolète. Solution : monitoring continu, ré-entraînement automatique, alertes sur métriques.",
+    },
+  ]);
+  const mlq = mlopsQuestions[0];
+
+  return [
+    // Level 0 — Types de données
+    {
+      id: 0,
+      title: "STRUCTURES DE DONNÉES",
+      mission: `Identifiez la structure de données suivante.\n\n  ${tq.data}\n\n${tq.q}`,
+      hint: tq.explain.substring(0, 60) + "...",
+      topic: "Types & Structures",
+      answers: tq.a,
+      winResponse: [
+        "✓ CORRECT !",
+        "",
+        `📖 ${tq.explain}`,
+        "",
+        "→ Maîtriser les structures de données = fondation de tout projet data.",
+      ],
+      explain: [
+        "📖 STRUCTURES DE DONNÉES",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
+        "• Liste/Array : collection ordonnée [1, 2, 3]",
+        "• Dict/JSON : paires clé-valeur {\"nom\": \"Alice\"}",
+        "• CSV : tableau texte, séparateur virgule",
+        "• DataFrame : tableau structuré (Pandas)",
+        "• Parquet : format colonnaire optimisé Big Data",
+      ],
+    },
+    // Level 1 — SQL
+    {
+      id: 1,
+      title: "SQL — REQUÊTES",
+      mission: `Voici une table :\n\n  ${sq.table}\n\n${sq.q}`,
+      hint: sq.explain.substring(0, 80) + "...",
+      topic: "SQL",
+      answers: sq.a,
+      winResponse: [
+        "✓ REQUÊTE VALIDE !",
+        "",
+        `📖 ${sq.explain}`,
+      ],
+      explain: [
+        "📖 SQL FONDAMENTAUX",
+        "━━━━━━━━━━━━━━━━━━━",
+        "SELECT colonnes FROM table",
+        "WHERE condition",
+        "GROUP BY colonne",
+        "ORDER BY colonne ASC/DESC",
+        "JOIN table2 ON table1.id = table2.id",
+        "HAVING condition_sur_aggregat",
+        "",
+        "Agrégats : COUNT, SUM, AVG, MIN, MAX",
+      ],
+    },
+    // Level 2 — Data Cleaning
+    {
+      id: 2,
+      title: "NETTOYAGE DE DONNÉES",
+      mission: `Analysez ce dataset :\n\n  ${cq.dataset}\n\n${cq.q}`,
+      hint: "Cherchez : NaN, valeurs négatives impossibles, outliers, données invalides.",
+      topic: "Data Cleaning",
+      answers: cq.a,
+      winResponse: [
+        "✓ BON OEIL !",
+        "",
+        "Problèmes détectés :",
+        ...cq.problems.map((p) => `  ⚠ ${p}`),
+        "",
+        `📖 ${cq.explain}`,
+      ],
+      explain: [
+        "📖 NETTOYAGE DE DONNÉES",
+        "━━━━━━━━━━━━━━━━━━━━━━━",
+        "Vérifier :",
+        "  • Valeurs manquantes (NaN, NULL, vide)",
+        "  • Outliers (IQR, z-score)",
+        "  • Doublons (duplicated())",
+        "  • Types incorrects (str au lieu de int)",
+        "  • Cohérence des formats (dates, pays)",
+        "",
+        "Pandas : .isna(), .describe(), .duplicated(), .dtypes",
+      ],
+    },
+    // Level 3 — Stats
+    {
+      id: 3,
+      title: "STATISTIQUES DESCRIPTIVES",
+      mission: `${stq.data}\n\n${stq.q}`,
+      hint: "Pensez à l'impact des valeurs extrêmes sur chaque mesure.",
+      topic: "Statistiques",
+      answers: stq.a,
+      winResponse: ["✓ EXACT !", "", `📖 ${stq.explain}`],
+      explain: [
+        "📖 STATS DESCRIPTIVES",
+        "━━━━━━━━━━━━━━━━━━━━━",
+        "Tendance centrale : moyenne, médiane, mode",
+        "Dispersion : écart-type, variance, IQR",
+        "Distribution : histogramme, boxplot",
+        "",
+        "Médiane > Moyenne quand outliers présents",
+        "IQR = Q3 - Q1, outliers si < Q1-1.5*IQR ou > Q3+1.5*IQR",
+      ],
+    },
+    // Level 4 — Visualisation
+    {
+      id: 4,
+      title: "DATA VISUALISATION",
+      mission: `${vq.scenario}\n\n${vq.q}`,
+      hint: "Chaque type de graphique a un usage optimal selon le message à transmettre.",
+      topic: "Visualisation",
+      answers: vq.a,
+      winResponse: ["✓ BON CHOIX !", "", `📖 ${vq.explain}`],
+      explain: [
+        "📖 CHOISIR SON GRAPHIQUE",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
+        "📈 Line chart → évolution temporelle",
+        "📊 Bar chart → comparaison de catégories",
+        "🥧 Pie chart → proportions (⚠ souvent trompeur)",
+        "⚫ Scatter plot → corrélation 2 variables",
+        "📦 Boxplot → distribution + outliers",
+        "🗺️ Heatmap → matrice de corrélation",
+        "",
+        "Règle d'or : un graphique = un message clair",
+      ],
+    },
+    // Level 5 — Overfitting
+    {
+      id: 5,
+      title: "TRAIN / TEST SPLIT",
+      mission: `${splitQuestion.scenario}\n\n${splitQuestion.q}`,
+      hint: "Quand un modèle performe bien en entraînement mais mal en réalité...",
+      topic: "Overfitting",
+      answers: splitQuestion.a,
+      winResponse: [
+        "✓ EXACTEMENT !",
+        "",
+        `📖 ${splitQuestion.explain}`,
+        "",
+        "Règle d'or : JAMAIS évaluer sur les données d'entraînement.",
+      ],
+      explain: [
+        "📖 OVERFITTING vs UNDERFITTING",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "Overfitting : trop appris → mémorise le bruit",
+        "  → train_acc >> val_acc",
+        "Underfitting : pas assez appris → trop simple",
+        "  → train_acc ET val_acc faibles",
+        "",
+        "Solutions overfitting :",
+        "  • Train/test split (80/20)",
+        "  • Cross-validation (k-fold)",
+        "  • Régularisation (L1, L2, Dropout)",
+        "  • Plus de données / data augmentation",
+      ],
+    },
+    // Level 6 — Métriques
+    {
+      id: 6,
+      title: "MÉTRIQUES ML",
+      mission: `${mq.scenario}\n\n${mq.q}`,
+      hint: "Recall = TP / (TP + FN). Précision = TP / (TP + FP).",
+      topic: "Métriques",
+      answers: mq.a,
+      winResponse: ["✓ BIEN CALCULÉ !", "", `📖 ${mq.explain}`],
+      explain: [
+        "📖 MÉTRIQUES DE CLASSIFICATION",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "Accuracy = (TP+TN) / Total",
+        "Précision = TP / (TP+FP) → 'Parmi mes prédictions +, combien sont vraies ?'",
+        "Recall = TP / (TP+FN) → 'Parmi les vrais +, combien j'ai trouvé ?'",
+        "F1-Score = 2 × (P×R)/(P+R)",
+        "",
+        "⚠ Accuracy trompeuse si classes déséquilibrées !",
+        "Fraude/Médical → prioriser Recall",
+        "Spam → prioriser Précision",
+      ],
+    },
+    // Level 7 — Feature Engineering
+    {
+      id: 7,
+      title: "FEATURE ENGINEERING",
+      mission: `${feq.dataset}\n\n${feq.q}`,
+      hint: "Comment transformer une donnée brute en information utile pour un modèle ?",
+      topic: "Feature Engineering",
+      answers: feq.a,
+      winResponse: [
+        "✓ BONNE INTUITION !",
+        "",
+        `📖 ${feq.explain}`,
+      ],
+      explain: [
+        "📖 FEATURE ENGINEERING",
+        "━━━━━━━━━━━━━━━━━━━━━━",
+        "Transformer les données brutes en features utiles :",
+        "  • Extraction : date → jour_semaine, mois, weekend",
+        "  • Encoding : catégoriel → one-hot, ordinal, target",
+        "  • Agrégation : historique → moyenne, tendance",
+        "  • Interaction : surface × nb_etages = volume",
+        "  • Texte → TF-IDF, embeddings, sentiment",
+        "",
+        "\"Garbage in, garbage out\" — la qualité des features > choix de l'algorithme",
+      ],
+    },
+    // Level 8 — Types de ML
+    {
+      id: 8,
+      title: "ALGORITHMES ML",
+      mission: `${aq.scenario}\n\n${aq.q}`,
+      hint: "Supervisé = avec labels. Non supervisé = sans labels.",
+      topic: "Algorithmes",
+      answers: aq.a,
+      winResponse: [
+        "✓ CORRECT !",
+        "",
+        `📖 ${aq.explain}`,
+      ],
+      explain: [
+        "📖 TYPES DE ML",
+        "━━━━━━━━━━━━━━━",
+        "SUPERVISÉ (avec labels) :",
+        "  Classification : catégories → Logistic Reg, Random Forest, SVM, XGBoost",
+        "  Régression : valeurs continues → Linear Reg, Gradient Boosting",
+        "",
+        "NON SUPERVISÉ (sans labels) :",
+        "  Clustering : K-Means, DBSCAN, Hierarchical",
+        "  Réduction dim : PCA, t-SNE, UMAP",
+        "",
+        "RENFORCEMENT : agent + environnement + récompense",
+      ],
+    },
+    // Level 9 — Biais & Éthique
+    {
+      id: 9,
+      title: "BIAIS & ÉTHIQUE IA",
+      mission: `${bq.scenario}\n\n${bq.q}`,
+      hint: "Le modèle apprend de ce qu'on lui donne. Si les données sont biaisées...",
+      topic: "Éthique IA",
+      answers: bq.a,
+      winResponse: [
+        "✓ CRUCIAL !",
+        "",
+        `📖 ${bq.explain}`,
+        "",
+        "→ L'IA Act européen impose des audits de biais pour les systèmes à haut risque.",
+      ],
+      explain: [
+        "📖 BIAIS EN IA",
+        "━━━━━━━━━━━━━━━",
+        "Types de biais :",
+        "  • Biais de sélection : données non représentatives",
+        "  • Biais historique : discriminations passées reproduites",
+        "  • Biais de confirmation : interpréter pour confirmer",
+        "  • Biais de survivant : ne voir que les succès",
+        "",
+        "Solutions :",
+        "  • Audit de fairness (equalized odds, demographic parity)",
+        "  • Données diversifiées et représentatives",
+        "  • Transparence et explicabilité (SHAP, LIME)",
+        "  • Régulation : AI Act (UE), RGPD",
+      ],
+    },
+    // Level 10 — Deep Learning
+    {
+      id: 10,
+      title: "DEEP LEARNING",
+      mission: `${dlq.scenario}\n\n${dlq.q}`,
+      hint: "Pensez à ce que la couche de sortie doit produire pour une classification.",
+      topic: "Deep Learning",
+      answers: dlq.a,
+      winResponse: ["✓ EXACT !", "", `📖 ${dlq.explain}`],
+      explain: [
+        "📖 DEEP LEARNING",
+        "━━━━━━━━━━━━━━━━━",
+        "Architectures principales :",
+        "  • MLP : couches denses, données tabulaires",
+        "  • CNN : images, détection de patterns spatiaux",
+        "  • RNN/LSTM : séquences, texte, séries temporelles",
+        "  • Transformer : NLP (BERT, GPT), vision (ViT)",
+        "",
+        "Fonctions d'activation :",
+        "  ReLU → couches cachées (résout vanishing gradient)",
+        "  Softmax → sortie classification multi-classes",
+        "  Sigmoid → sortie classification binaire",
+      ],
+    },
+    // Level 11 — MLOps
+    {
+      id: 11,
+      title: "MLOPS & PRODUCTION",
+      mission: `${mlq.scenario}\n\n${mlq.q}`,
+      hint: "Le monde réel change. Les données aussi.",
+      topic: "MLOps",
+      answers: mlq.a,
+      winResponse: [
+        "✓ BIEN VU !",
+        "",
+        `📖 ${mlq.explain}`,
+        "",
+        "→ Un modèle en production sans monitoring = une bombe à retardement.",
+      ],
+      explain: [
+        "📖 MLOPS",
+        "━━━━━━━━━",
+        "Pipeline complet :",
+        "  Data → Feature Store → Train → Evaluate → Deploy → Monitor",
+        "",
+        "Concepts clés :",
+        "  • Data drift : distribution des données change",
+        "  • Concept drift : la relation X→Y change",
+        "  • A/B testing : comparer modèles en prod",
+        "  • Feature store : centraliser les features",
+        "  • Model registry : versioner les modèles",
+        "",
+        "Outils : MLflow, Kubeflow, Airflow, DVC, Weights & Biases",
+      ],
+    },
+  ];
+};
+
+// ═══════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════
+
+export default function DataAIGame() {
+  const [screen, setScreen] = useState("title"); // title, profile, game, win
+  const [profile, setProfile] = useState(null);
+  const [pseudo, setPseudo] = useState("");
+  const [pseudoInput, setPseudoInput] = useState("");
+  const [levels, setLevels] = useState([]);
+  const [currentLevel, setCurrentLevel] = useState(0);
+  const [lines, setLines] = useState([]);
+  const [input, setInput] = useState("");
+  const [score, setScore] = useState(0);
+  const [startTime, setStartTime] = useState(null);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [levelSolved, setLevelSolved] = useState(false);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const termRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const allLevels = useRef([]);
+
+  useEffect(() => {
+    allLevels.current = buildLevels();
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      if (termRef.current) {
+        termRef.current.scrollTop = termRef.current.scrollHeight;
+      }
+    }, 20);
+  }, []);
+
+  const addLines = useCallback(
+    (newLines) => {
+      setLines((prev) => [...prev, ...newLines]);
+      scrollToBottom();
+    },
+    [scrollToBottom]
+  );
+
+  const focusInput = () => {
+    if (inputRef.current) inputRef.current.focus();
+  };
+
+  // Start game
+  const startGame = (prof) => {
+    allLevels.current = buildLevels();
+    const profileLevels = PROFILES[prof].levels.map(
+      (i) => allLevels.current[i]
+    );
+    setProfile(prof);
+    setLevels(profileLevels);
+    setCurrentLevel(0);
+    setScore(0);
+    setHintsUsed(0);
+    setStartTime(Date.now());
+    setLevelSolved(false);
+    setCommandHistory([]);
+    setHistoryIndex(-1);
+
+    const lvl = profileLevels[0];
+    setLines([
+      `┌──────────────────────────────────────────────────────┐`,
+      `│  DATA/IA TERMINAL — ${PROFILES[prof].label.padEnd(30)}│`,
+      `│  Agent : ${pseudo.padEnd(42)}│`,
+      `│  Niveaux : ${String(profileLevels.length).padEnd(40)}│`,
+      `└──────────────────────────────────────────────────────┘`,
+      "",
+      `═══ NIVEAU 1/${profileLevels.length} : ${lvl.title} ═══`,
+      `📡 Thème : ${lvl.topic}`,
+      "",
+      ...lvl.mission.split("\n"),
+      "",
+      "Tapez votre réponse. Commandes : help | hint | explain | mission | skip",
+    ]);
+    setScreen("game");
+    setTimeout(focusInput, 100);
+  };
+
+  // Process command
+  const processCommand = (cmd) => {
+    const trimmed = cmd.trim();
+    if (!trimmed) return;
+
+    setCommandHistory((prev) => [...prev, trimmed]);
+    setHistoryIndex(-1);
+
+    const lower = trimmed.toLowerCase();
+    const lvl = levels[currentLevel];
+
+    const promptLine = `data[${currentLevel + 1}]> ${trimmed}`;
+
+    if (lower === "help") {
+      addLines([
+        promptLine,
+        "",
+        "╔═══════════════════════════════════════════╗",
+        "║           COMMANDES DISPONIBLES           ║",
+        "╠═══════════════════════════════════════════╣",
+        "║  help      - Cette aide                  ║",
+        "║  hint      - Obtenir un indice (-50 pts) ║",
+        "║  explain   - Mini-cours sur le thème     ║",
+        "║  mission   - Revoir l'énoncé             ║",
+        "║  skip      - Passer au niveau suivant    ║",
+        "║  score     - Score actuel                ║",
+        "║  clear     - Nettoyer le terminal        ║",
+        "╚═══════════════════════════════════════════╝",
+      ]);
+      return;
+    }
+
+    if (lower === "clear") {
+      setLines([
+        `═══ NIVEAU ${currentLevel + 1}/${levels.length} : ${lvl.title} ═══`,
+        `Tapez 'mission' pour revoir l'énoncé.`,
+      ]);
+      return;
+    }
+
+    if (lower === "hint") {
+      setHintsUsed((h) => h + 1);
+      setScore((s) => Math.max(0, s - 50));
+      addLines([promptLine, "", `💡 INDICE : ${lvl.hint}`, "(-50 points)"]);
+      return;
+    }
+
+    if (lower === "explain") {
+      addLines([promptLine, "", ...lvl.explain]);
+      return;
+    }
+
+    if (lower === "mission") {
+      addLines([
+        promptLine,
+        "",
+        `═══ ${lvl.title} ═══`,
+        ...lvl.mission.split("\n"),
+      ]);
+      return;
+    }
+
+    if (lower === "score") {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      addLines([
+        promptLine,
+        "",
+        `📊 Score : ${score} pts`,
+        `⏱️ Temps : ${mins}m ${secs}s`,
+        `💡 Hints utilisés : ${hintsUsed}`,
+        `📈 Niveau : ${currentLevel + 1}/${levels.length}`,
+      ]);
+      return;
+    }
+
+    if (lower === "skip") {
+      addLines([promptLine, "", "⏭️ Niveau passé (0 points)"]);
+      goNextLevel();
+      return;
+    }
+
+    // Check answer
+    if (levelSolved) {
+      addLines([
+        promptLine,
+        "✓ Déjà résolu ! Tapez 'skip' pour continuer ou attendez...",
+      ]);
+      return;
+    }
+
+    const isCorrect = lvl.answers.some(
+      (a) => lower === a.toLowerCase() || lower.includes(a.toLowerCase())
+    );
+
+    if (isCorrect) {
+      const pts = 100;
+      setScore((s) => s + pts);
+      setLevelSolved(true);
+      addLines([
+        promptLine,
+        "",
+        ...lvl.winResponse,
+        "",
+        `  +${pts} points !`,
+        "",
+        currentLevel < levels.length - 1
+          ? "→ Tapez n'importe quoi ou attendez pour continuer..."
+          : "→ Tapez 'finish' pour voir vos résultats !",
+      ]);
+
+      if (currentLevel < levels.length - 1) {
+        setTimeout(() => {
+          goNextLevel();
+        }, 4000);
+      }
+    } else {
+      addLines([
+        promptLine,
+        "",
+        "✗ Incorrect. Réessayez !",
+        "  (tapez 'hint' pour un indice ou 'explain' pour un cours)",
+      ]);
+    }
+  };
+
+  const goNextLevel = () => {
+    const next = currentLevel + 1;
+    if (next >= levels.length) {
+      // WIN
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      const bonus = Math.max(0, 500 - elapsed);
+      const finalScore = score + bonus;
+      setScore(finalScore);
+      addLines([
+        "",
+        "╔══════════════════════════════════════════════════╗",
+        "║            🏆 MISSION TERMINÉE !                ║",
+        "╠══════════════════════════════════════════════════╣",
+        `║  Agent : ${pseudo.padEnd(38)}║`,
+        `║  Profil : ${PROFILES[profile].label.padEnd(36)}║`,
+        `║  Score : ${String(finalScore).padEnd(38)}║`,
+        `║  Temps : ${(mins + "m " + secs + "s").padEnd(38)}║`,
+        `║  Hints : ${String(hintsUsed).padEnd(38)}║`,
+        "╚══════════════════════════════════════════════════╝",
+        "",
+        finalScore > 800
+          ? "🌟 EXCEPTIONNEL ! Tu es prêt pour le terrain."
+          : finalScore > 500
+          ? "👏 Solide ! Continue à t'entraîner."
+          : "📚 Pas mal ! Revois les concepts avec 'explain'.",
+        "",
+        "Tapez 'restart' pour rejouer ou 'menu' pour changer de profil.",
+      ]);
+      setScreen("win");
+      return;
+    }
+
+    setCurrentLevel(next);
+    setLevelSolved(false);
+    const lvl = levels[next];
+    addLines([
+      "",
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      "",
+      `═══ NIVEAU ${next + 1}/${levels.length} : ${lvl.title} ═══`,
+      `📡 Thème : ${lvl.topic}`,
+      "",
+      ...lvl.mission.split("\n"),
+      "",
+      "Tapez votre réponse. Commandes : help | hint | explain",
+    ]);
+  };
+
+  const handleKey = (e) => {
+    if (e.key === "Enter") {
+      const cmd = input;
+      setInput("");
+
+      if (screen === "win") {
+        if (cmd.toLowerCase() === "restart") {
+          startGame(profile);
+          return;
+        }
+        if (cmd.toLowerCase() === "menu") {
+          setScreen("profile");
+          return;
+        }
+      }
+
+      if (levelSolved && currentLevel < levels.length - 1) {
+        goNextLevel();
+        return;
+      }
+
+      if (
+        levelSolved &&
+        currentLevel === levels.length - 1 &&
+        cmd.toLowerCase() === "finish"
+      ) {
+        goNextLevel();
+        return;
+      }
+
+      processCommand(cmd);
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (commandHistory.length > 0) {
+        const newIdx =
+          historyIndex === -1
+            ? commandHistory.length - 1
+            : Math.max(0, historyIndex - 1);
+        setHistoryIndex(newIdx);
+        setInput(commandHistory[newIdx]);
+      }
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+      const newIdx = historyIndex + 1;
+      if (newIdx >= commandHistory.length) {
+        setHistoryIndex(-1);
+        setInput("");
+      } else {
+        setHistoryIndex(newIdx);
+        setInput(commandHistory[newIdx]);
+      }
+    }
+  };
+
+  // ═══════════════════════════════════════════
+  // TITLE SCREEN
+  // ═══════════════════════════════════════════
+  if (screen === "title") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0d1b2a 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 600,
+            width: "100%",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#6366f1",
+              letterSpacing: "6px",
+              marginBottom: 12,
+              textTransform: "uppercase",
+            }}
+          >
+            Terminal Éducatif
+          </div>
+
+          <h1
+            style={{
+              fontSize: "clamp(32px, 6vw, 56px)",
+              fontWeight: 900,
+              margin: "0 0 8px 0",
+              background: "linear-gradient(135deg, #818cf8, #c084fc, #f472b6)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              lineHeight: 1.1,
+            }}
+          >
+            DATA / IA
+          </h1>
+
+          <div
+            style={{
+              fontSize: 13,
+              color: "#64748b",
+              marginBottom: 40,
+              letterSpacing: "2px",
+            }}
+          >
+            CHALLENGE
+          </div>
+
+          <div
+            style={{
+              background: "rgba(99, 102, 241, 0.08)",
+              border: "1px solid rgba(99, 102, 241, 0.2)",
+              borderRadius: 12,
+              padding: "24px",
+              marginBottom: 30,
+              textAlign: "left",
+            }}
+          >
+            <div
+              style={{
+                color: "#94a3b8",
+                fontSize: 12,
+                lineHeight: 1.8,
+              }}
+            >
+              <span style={{ color: "#818cf8" }}>$</span> Maîtrisez les
+              fondamentaux de la Data Science et de l'IA
+              <br />
+              <span style={{ color: "#818cf8" }}>$</span> SQL, nettoyage,
+              stats, ML, deep learning, éthique
+              <br />
+              <span style={{ color: "#818cf8" }}>$</span> 3 profils : Débutant
+              → Intermédiaire → Expert
+              <br />
+              <span style={{ color: "#818cf8" }}>$</span> Questions aléatoires
+              à chaque partie
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <input
+              type="text"
+              placeholder="Entrez votre pseudo..."
+              value={pseudoInput}
+              onChange={(e) => setPseudoInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && pseudoInput.trim()) {
+                  setPseudo(pseudoInput.trim());
+                  setScreen("profile");
+                }
+              }}
+              style={{
+                width: "100%",
+                maxWidth: 320,
+                padding: "12px 16px",
+                background: "rgba(15, 15, 35, 0.8)",
+                border: "1px solid rgba(99, 102, 241, 0.3)",
+                borderRadius: 8,
+                color: "#e2e8f0",
+                fontSize: 14,
+                fontFamily: "inherit",
+                outline: "none",
+                textAlign: "center",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              if (pseudoInput.trim()) {
+                setPseudo(pseudoInput.trim());
+                setScreen("profile");
+              }
+            }}
+            disabled={!pseudoInput.trim()}
+            style={{
+              padding: "12px 40px",
+              background: pseudoInput.trim()
+                ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+                : "rgba(99,102,241,0.2)",
+              border: "none",
+              borderRadius: 8,
+              color: pseudoInput.trim() ? "#fff" : "#64748b",
+              fontSize: 14,
+              fontFamily: "inherit",
+              cursor: pseudoInput.trim() ? "pointer" : "default",
+              fontWeight: 600,
+              letterSpacing: "1px",
+              transition: "all 0.2s",
+            }}
+          >
+            DÉMARRER →
+          </button>
+
+          <div
+            style={{
+              marginTop: 40,
+              fontSize: 10,
+              color: "#334155",
+              letterSpacing: "1px",
+            }}
+          >
+            v1.0 — DATA/IA CHALLENGE TERMINAL
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════
+  // PROFILE SELECT
+  // ═══════════════════════════════════════════
+  if (screen === "profile") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0d1b2a 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+          padding: "20px",
+        }}
+      >
+        <div style={{ maxWidth: 650, width: "100%" }}>
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: 36,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                color: "#6366f1",
+                letterSpacing: 4,
+                marginBottom: 8,
+              }}
+            >
+              AGENT : {pseudo}
+            </div>
+            <h2
+              style={{
+                fontSize: 28,
+                fontWeight: 800,
+                color: "#e2e8f0",
+                margin: 0,
+              }}
+            >
+              Choisissez votre profil
+            </h2>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            {Object.entries(PROFILES).map(([key, p]) => {
+              const topicsByLevel = {
+                beginner: [
+                  "Structures de données",
+                  "SQL basics",
+                  "Data Cleaning",
+                  "Statistiques",
+                  "Visualisation",
+                  "Overfitting",
+                ],
+                intermediate: [
+                  "...Débutant +",
+                  "Métriques ML",
+                  "Feature Engineering",
+                  "Types d'algorithmes",
+                ],
+                expert: [
+                  "...Intermédiaire +",
+                  "Biais & Éthique IA",
+                  "Deep Learning",
+                  "MLOps & Production",
+                ],
+              };
+
+              return (
+                <button
+                  key={key}
+                  onClick={() => startGame(key)}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 20,
+                    padding: "20px 24px",
+                    background: "rgba(15, 15, 35, 0.6)",
+                    border: `1px solid ${p.color}33`,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.2s",
+                    fontFamily: "inherit",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = `${p.color}15`;
+                    e.currentTarget.style.borderColor = `${p.color}66`;
+                    e.currentTarget.style.transform = "translateX(4px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(15, 15, 35, 0.6)";
+                    e.currentTarget.style.borderColor = `${p.color}33`;
+                    e.currentTarget.style.transform = "translateX(0)";
+                  }}
+                >
+                  <div
+                    style={{
+                      minWidth: 50,
+                      height: 50,
+                      borderRadius: 10,
+                      background: `${p.color}20`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 22,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {p.label.split(" ")[0]}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        color: p.color,
+                        fontWeight: 700,
+                        fontSize: 15,
+                        marginBottom: 2,
+                      }}
+                    >
+                      {p.label.split(" ").slice(1).join(" ")} — {p.desc}
+                    </div>
+                    <div
+                      style={{
+                        color: "#64748b",
+                        fontSize: 11,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {p.levels.length} niveaux
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 4,
+                      }}
+                    >
+                      {topicsByLevel[key].map((t, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: 10,
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            background: `${p.color}15`,
+                            color: `${p.color}cc`,
+                            border: `1px solid ${p.color}22`,
+                          }}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      color: "#475569",
+                      fontSize: 18,
+                      alignSelf: "center",
+                    }}
+                  >
+                    →
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: 24,
+            }}
+          >
+            <button
+              onClick={() => setScreen("title")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#475569",
+                fontSize: 12,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              ← Retour
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════
+  // GAME SCREEN
+  // ═══════════════════════════════════════════
+  const lvl = levels[currentLevel];
+  const prof = PROFILES[profile];
+  const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+
+  return (
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "#080818",
+        fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+        overflow: "hidden",
+      }}
+      onClick={focusInput}
+    >
+      {/* Header bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "8px 16px",
+          background: "rgba(99, 102, 241, 0.08)",
+          borderBottom: "1px solid rgba(99, 102, 241, 0.15)",
+          flexShrink: 0,
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span
+            style={{
+              fontSize: 11,
+              color: prof.color,
+              fontWeight: 700,
+            }}
+          >
+            {prof.label}
+          </span>
+          <span style={{ color: "#475569", fontSize: 11 }}>│</span>
+          <span style={{ color: "#94a3b8", fontSize: 11 }}>{pseudo}</span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ color: "#818cf8", fontSize: 11 }}>
+            📊 {score} pts
+          </span>
+          <span style={{ color: "#64748b", fontSize: 11 }}>
+            📡 {currentLevel + 1}/{levels.length}
+          </span>
+          <span style={{ color: "#64748b", fontSize: 11 }}>
+            {lvl && `[${lvl.topic}]`}
+          </span>
+        </div>
+      </div>
+
+      {/* Terminal */}
+      <div
+        ref={termRef}
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px",
+          paddingBottom: 80,
+        }}
+      >
+        {lines.map((line, i) => (
+          <div
+            key={i}
+            style={{
+              fontSize: 12,
+              lineHeight: 1.7,
+              color: line.startsWith("✓")
+                ? "#22c55e"
+                : line.startsWith("✗")
+                ? "#ef4444"
+                : line.startsWith("═══")
+                ? "#818cf8"
+                : line.startsWith("📖")
+                ? "#c084fc"
+                : line.startsWith("💡")
+                ? "#f59e0b"
+                : line.startsWith("  ⚠")
+                ? "#f97316"
+                : line.startsWith("→")
+                ? "#6366f1"
+                : line.startsWith("data[")
+                ? "#38bdf8"
+                : line.includes("╔") ||
+                  line.includes("║") ||
+                  line.includes("╚") ||
+                  line.includes("╠")
+                ? "#6366f1"
+                : line.startsWith("━")
+                ? "#334155"
+                : "#94a3b8",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              fontFamily: "inherit",
+            }}
+          >
+            {line || "\u00A0"}
+          </div>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          display: "flex",
+          alignItems: "center",
+          padding: "12px 16px",
+          background: "rgba(10, 10, 26, 0.95)",
+          borderTop: "1px solid rgba(99, 102, 241, 0.15)",
+          backdropFilter: "blur(8px)",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            color: "#818cf8",
+            fontSize: 12,
+            marginRight: 8,
+            flexShrink: 0,
+          }}
+        >
+          data[{currentLevel + 1}]&gt;
+        </span>
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKey}
+          autoFocus
+          spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="off"
+          style={{
+            flex: 1,
+            background: "none",
+            border: "none",
+            color: "#e2e8f0",
+            fontSize: 13,
+            fontFamily: "inherit",
+            outline: "none",
+            caretColor: "#818cf8",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
