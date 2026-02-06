@@ -6,7 +6,7 @@
     <title>💻 Développement Python — Challenge Terminal</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #root { height: 100%; width: 100%; }
@@ -14,10 +14,10 @@
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel" src="python-game.jsx"></script>
+    
     <script type="text/babel">
         /* ----------------- */ 
-            import { useState, useEffect, useRef, useCallback } from "react";
+            const { useState, useEffect, useRef, useCallback } = React;
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
@@ -968,7 +968,7 @@ const CodeRain = () => {
 // MAIN GAME
 // ═══════════════════════════════════════════════
 
-export default function PythonGame() {
+function PythonGame() {
   const [screen, setScreen] = useState("menu");
   const [profile, setProfile] = useState(null);
   const [levels, setLevels] = useState([]);
