@@ -615,9 +615,12 @@ function DataAIGame() {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       const mins = Math.floor(elapsed / 60);
       const secs = elapsed % 60;
-      const bonus = Math.max(0, 500 - elapsed);
+      
       const currentScore = scoreRef.current;
+      const rawBonus = Math.max(0, 500 - elapsed);
+      const bonus = currentScore > 0 ? Math.min(rawBonus, Math.floor(currentScore * 0.5)) : 0;
       const finalScore = currentScore + bonus;
+
       setScore(finalScore);
       scoreRef.current = finalScore;
 
