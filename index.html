@@ -33,7 +33,18 @@
             overflow-x: hidden;
         }
 
-        /* Animated background */
+        /* ═══ Particle Canvas ═══ */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ═══ Animated background ═══ */
         .bg-grid {
             position: fixed;
             top: 0;
@@ -54,7 +65,7 @@
             height: 600px;
             border-radius: 50%;
             filter: blur(150px);
-            opacity: 0.15;
+            opacity: 0.12;
             pointer-events: none;
             z-index: 0;
         }
@@ -78,7 +89,7 @@
             50% { transform: translate(50px, 30px); }
         }
 
-        /* Content */
+        /* ═══ Content ═══ */
         .container {
             position: relative;
             z-index: 1;
@@ -87,7 +98,7 @@
             padding: 40px 24px;
         }
 
-        /* Header */
+        /* ═══ Header ═══ */
         header {
             text-align: center;
             margin-bottom: 60px;
@@ -105,6 +116,12 @@
             color: #818cf8;
             text-transform: uppercase;
             margin-bottom: 20px;
+            animation: badgePulse 3s ease-in-out infinite;
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+            50% { box-shadow: 0 0 20px 2px rgba(99, 102, 241, 0.15); }
         }
 
         h1 {
@@ -116,6 +133,24 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            min-height: 1.2em;
+        }
+
+        /* Typing cursor */
+        .typing-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 0.85em;
+            background: #818cf8;
+            margin-left: 4px;
+            vertical-align: text-bottom;
+            animation: cursorBlink 0.7s step-end infinite;
+            -webkit-text-fill-color: initial;
+        }
+
+        @keyframes cursorBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
 
         .subtitle {
@@ -124,6 +159,14 @@
             max-width: 600px;
             margin: 0 auto 30px;
             line-height: 1.6;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.6s ease;
+        }
+
+        .subtitle.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .stats {
@@ -131,6 +174,14 @@
             justify-content: center;
             gap: 40px;
             flex-wrap: wrap;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.6s ease 0.2s;
+        }
+
+        .stats.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .stat {
@@ -151,7 +202,7 @@
             letter-spacing: 1px;
         }
 
-        /* Games grid */
+        /* ═══ Games grid ═══ */
         .games-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -165,12 +216,15 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 16px;
             padding: 28px;
-            transition: all 0.3s ease;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
             overflow: hidden;
             cursor: pointer;
             text-decoration: none;
             color: inherit;
             display: block;
+            /* Tilt 3D */
+            transform-style: preserve-3d;
+            will-change: transform;
         }
 
         .game-card::before {
@@ -185,20 +239,52 @@
             transition: opacity 0.3s;
         }
 
+        /* ═══ Scan line effect ═══ */
+        .game-card::after {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(
+                180deg, 
+                transparent 0%, 
+                var(--card-color) 50%, 
+                transparent 100%
+            );
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            filter: blur(2px);
+            z-index: 2;
+        }
+
+        .game-card:hover::after {
+            opacity: 0.06;
+            animation: scanLine 1.5s linear infinite;
+        }
+
+        @keyframes scanLine {
+            0% { top: -60px; }
+            100% { top: calc(100% + 60px); }
+        }
+
         .game-card:hover {
-            transform: translateY(-4px);
             border-color: var(--card-color);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 30px -5px var(--card-color-alpha, rgba(255,255,255,0.05));
         }
 
         .game-card:hover::before {
             opacity: 1;
         }
 
-        .game-card[data-game="cyber"] { --card-color: var(--cyber); }
-        .game-card[data-game="dev"] { --card-color: var(--dev); }
-        .game-card[data-game="network"] { --card-color: var(--network); }
-        .game-card[data-game="data"] { --card-color: var(--data); }
+        .game-card[data-game="cyber"] { --card-color: var(--cyber); --card-color-alpha: rgba(34, 197, 94, 0.08); }
+        .game-card[data-game="dev"] { --card-color: var(--dev); --card-color-alpha: rgba(59, 130, 246, 0.08); }
+        .game-card[data-game="network"] { --card-color: var(--network); --card-color-alpha: rgba(245, 158, 11, 0.08); }
+        .game-card[data-game="data"] { --card-color: var(--data); --card-color-alpha: rgba(168, 85, 247, 0.08); }
 
         .game-icon {
             width: 56px;
@@ -211,6 +297,8 @@
             margin-bottom: 20px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
         }
 
         .game-card[data-game="cyber"] .game-icon { background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); }
@@ -223,6 +311,8 @@
             font-weight: 700;
             margin-bottom: 8px;
             color: var(--card-color);
+            position: relative;
+            z-index: 1;
         }
 
         .game-subtitle {
@@ -232,6 +322,8 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
         }
 
         .game-description {
@@ -239,6 +331,8 @@
             color: var(--text-muted);
             line-height: 1.6;
             margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
         }
 
         .game-topics {
@@ -246,6 +340,8 @@
             flex-wrap: wrap;
             gap: 6px;
             margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
         }
 
         .topic-tag {
@@ -268,6 +364,8 @@
             color: var(--card-color);
             text-transform: uppercase;
             letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
         }
 
         .game-cta::after {
@@ -279,7 +377,29 @@
             transform: translateX(4px);
         }
 
-        /* Features */
+        /* ═══ Card reveal on scroll ═══ */
+        .game-card {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .game-card.revealed {
+            animation: cardReveal 0.5s ease forwards;
+        }
+
+        .game-card.revealed:nth-child(1) { animation-delay: 0.05s; }
+        .game-card.revealed:nth-child(2) { animation-delay: 0.12s; }
+        .game-card.revealed:nth-child(3) { animation-delay: 0.19s; }
+        .game-card.revealed:nth-child(4) { animation-delay: 0.26s; }
+
+        @keyframes cardReveal {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ═══ Features ═══ */
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -313,7 +433,7 @@
             margin-bottom: 2px;
         }
 
-        /* Terminal preview */
+        /* ═══ Terminal preview ═══ */
         .terminal-preview {
             background: #0a0a1a;
             border: 1px solid rgba(99, 102, 241, 0.2);
@@ -377,7 +497,7 @@
         .terminal-success { color: #22c55e; }
         .terminal-highlight { color: #f59e0b; }
 
-        /* Footer */
+        /* ═══ Footer ═══ */
         footer {
             text-align: center;
             padding: 40px 0;
@@ -397,7 +517,7 @@
             color: var(--text-muted);
         }
 
-        /* Responsive */
+        /* ═══ Responsive ═══ */
         @media (max-width: 640px) {
             .stats {
                 gap: 24px;
@@ -412,27 +532,14 @@
             }
         }
 
-        /* Animations */
-        .fade-in {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeIn 0.6s ease forwards;
-        }
-
-        .fade-in:nth-child(1) { animation-delay: 0.1s; }
-        .fade-in:nth-child(2) { animation-delay: 0.2s; }
-        .fade-in:nth-child(3) { animation-delay: 0.3s; }
-        .fade-in:nth-child(4) { animation-delay: 0.4s; }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
         }
     </style>
 </head>
 <body>
+    <canvas id="particles-canvas"></canvas>
     <div class="bg-grid"></div>
     <div class="bg-glow bg-glow-1"></div>
     <div class="bg-glow bg-glow-2"></div>
@@ -440,29 +547,29 @@
     <div class="container">
         <header>
             <div class="badge">Journée Portes Ouvertes 2026</div>
-            <h1>Challenge Terminal</h1>
-            <p class="subtitle">
+            <h1 id="typed-title"></h1>
+            <p class="subtitle" id="subtitle">
                 4 défis interactifs pour découvrir les métiers de l'IT. 
                 Choisissez votre spécialité, relevez le challenge, et testez vos compétences !
             </p>
-            <div class="stats">
+            <div class="stats" id="stats">
                 <div class="stat">
-                    <div class="stat-value">4</div>
+                    <div class="stat-value" data-target="4">0</div>
                     <div class="stat-label">Spécialités</div>
                 </div>
                 <div class="stat">
-                    <div class="stat-value">36</div>
+                    <div class="stat-value" data-target="36">0</div>
                     <div class="stat-label">Niveaux</div>
                 </div>
                 <div class="stat">
-                    <div class="stat-value">3</div>
+                    <div class="stat-value" data-target="3">0</div>
                     <div class="stat-label">Difficultés</div>
                 </div>
             </div>
         </header>
 
         <div class="games-grid">
-            <a href="cyber.html" target="_blank" class="game-card fade-in" data-game="cyber">
+            <a href="cyber.html" target="_blank" class="game-card" data-game="cyber">
                 <div class="game-icon">🛡️</div>
                 <h2 class="game-title">Cybersécurité</h2>
                 <p class="game-subtitle">Ethical Hacking Challenge</p>
@@ -480,7 +587,7 @@
                 <span class="game-cta">Lancer le défi</span>
             </a>
 
-            <a href="dev.html" target="_blank" class="game-card fade-in" data-game="dev">
+            <a href="dev.html" target="_blank" class="game-card" data-game="dev">
                 <div class="game-icon">💻</div>
                 <h2 class="game-title">Développement</h2>
                 <p class="game-subtitle">Python Code Challenge</p>
@@ -498,7 +605,7 @@
                 <span class="game-cta">Lancer le défi</span>
             </a>
 
-            <a href="network.html" target="_blank" class="game-card fade-in" data-game="network">
+            <a href="network.html" target="_blank" class="game-card" data-game="network">
                 <div class="game-icon">🌐</div>
                 <h2 class="game-title">Réseau & Infra</h2>
                 <p class="game-subtitle">Network Admin Challenge</p>
@@ -515,7 +622,7 @@
                 <span class="game-cta">Lancer le défi</span>
             </a>
 
-            <a href="data.html" target="_blank" class="game-card fade-in" data-game="data">
+            <a href="data.html" target="_blank" class="game-card" data-game="data">
                 <div class="game-icon">📊</div>
                 <h2 class="game-title">Data & IA</h2>
                 <p class="game-subtitle">Data Science Challenge</p>
@@ -602,11 +709,212 @@
         </footer>
     </div>
 
-    <style>
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
+    <script>
+    /* ════════════════════════════════════════
+       1. PARTICLE NETWORK (Nodes + Lines)
+       ════════════════════════════════════════ */
+    (function() {
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let mouse = { x: null, y: null };
+        const PARTICLE_COUNT = 60;
+        const CONNECTION_DIST = 150;
+        const MOUSE_DIST = 200;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
-    </style>
+        resize();
+        window.addEventListener('resize', resize);
+
+        document.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.4;
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.radius = Math.random() * 1.5 + 0.5;
+                // Pick a random accent color
+                const colors = ['99,102,241', '34,197,94', '59,130,246', '168,85,247', '245,158,11'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${this.color}, 0.5)`;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                // Lines between close particles
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < CONNECTION_DIST) {
+                        const opacity = (1 - dist / CONNECTION_DIST) * 0.12;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(99, 102, 241, ${opacity})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+
+                // Line to mouse
+                if (mouse.x !== null) {
+                    const dx = particles[i].x - mouse.x;
+                    const dy = particles[i].y - mouse.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < MOUSE_DIST) {
+                        const opacity = (1 - dist / MOUSE_DIST) * 0.2;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(mouse.x, mouse.y);
+                        ctx.strokeStyle = `rgba(129, 140, 248, ${opacity})`;
+                        ctx.lineWidth = 0.6;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+    })();
+
+    /* ════════════════════════════════════════
+       2. TYPING EFFECT on Title
+       ════════════════════════════════════════ */
+    (function() {
+        const titleEl = document.getElementById('typed-title');
+        const text = 'Challenge Terminal';
+        let i = 0;
+        const cursor = document.createElement('span');
+        cursor.className = 'typing-cursor';
+        titleEl.appendChild(cursor);
+
+        function type() {
+            if (i < text.length) {
+                cursor.insertAdjacentText('beforebegin', text[i]);
+                i++;
+                setTimeout(type, 60 + Math.random() * 40);
+            } else {
+                // Remove cursor after a short pause
+                setTimeout(() => {
+                    cursor.style.animation = 'none';
+                    cursor.style.opacity = '0';
+                    cursor.style.transition = 'opacity 0.5s';
+                    // Show subtitle and stats
+                    document.getElementById('subtitle').classList.add('visible');
+                    document.getElementById('stats').classList.add('visible');
+                    // Trigger counter animation
+                    animateCounters();
+                }, 600);
+            }
+        }
+        // Start typing after a brief pause
+        setTimeout(type, 400);
+    })();
+
+    /* ════════════════════════════════════════
+       3. ANIMATED COUNTERS
+       ════════════════════════════════════════ */
+    function animateCounters() {
+        document.querySelectorAll('.stat-value[data-target]').forEach(el => {
+            const target = parseInt(el.dataset.target);
+            const duration = 1200;
+            const start = performance.now();
+            
+            function tick(now) {
+                const elapsed = now - start;
+                const progress = Math.min(elapsed / duration, 1);
+                // Ease out cubic
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(eased * target);
+                if (progress < 1) {
+                    requestAnimationFrame(tick);
+                }
+            }
+            requestAnimationFrame(tick);
+        });
+    }
+
+    /* ════════════════════════════════════════
+       4. 3D TILT EFFECT on Cards
+       ════════════════════════════════════════ */
+    (function() {
+        const cards = document.querySelectorAll('.game-card');
+
+        cards.forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                // Max rotation: 6 degrees (subtle)
+                const rotateX = ((y - centerY) / centerY) * -6;
+                const rotateY = ((x - centerX) / centerX) * 6;
+
+                card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(5px)`;
+            });
+
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(800px) rotateX(0) rotateY(0) translateZ(0)';
+                card.style.transition = 'transform 0.4s ease, box-shadow 0.3s ease, border-color 0.3s ease';
+            });
+
+            card.addEventListener('mouseenter', () => {
+                card.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
+            });
+        });
+    })();
+
+    /* ════════════════════════════════════════
+       5. SCROLL REVEAL for Cards
+       ════════════════════════════════════════ */
+    (function() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+
+        document.querySelectorAll('.game-card').forEach(card => {
+            observer.observe(card);
+        });
+    })();
+
+    </script>
 </body>
 </html>
