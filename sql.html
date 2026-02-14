@@ -6,7 +6,9 @@
     <title>🗄️ SQL & Bases de Données — Challenge Terminal</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+    <script src="shared/utils.js"></script>
+    <script src="shared/rain.js"></script>
+    <script src="shared/game-engine.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #root { height: 100%; width: 100%; }
@@ -14,26 +16,20 @@
 </head>
 <body>
     <div id="root"></div>
-  
-    <script type="text/babel" data-presets="react">
 
-const { useState, useEffect, useRef, useCallback } = React;
+    <script>
 
 // ═══════════════════════════════════════════════
 // SQL & BASES DE DONNÉES — TERMINAL GAME
 // ═══════════════════════════════════════════════
-
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 // ═══════════════════════════════════════════════
 // LEVEL GENERATORS
 // ═══════════════════════════════════════════════
 
 // --- LEVEL: SELECT Basics ---
-const generateSelectLevel = () => {
-  const tables = shuffle([
+var generateSelectLevel = function () {
+  var tables = shuffle([
     {
       name: "employes",
       schema: "id | nom       | poste          | salaire | ville",
@@ -45,7 +41,7 @@ const generateSelectLevel = () => {
         " 5 | Moreau    | DBA            |  48000  | Paris",
       ],
       q: "Écrivez une requête pour afficher le nom et le salaire de tous les employés.",
-      a: (sql) => /select\s+.*nom.*salaire.*from\s+employes/i.test(sql.replace(/,/g,' ')) || /select\s+.*salaire.*nom.*from\s+employes/i.test(sql.replace(/,/g,' ')),
+      a: function (sql) { return /select\s+.*nom.*salaire.*from\s+employes/i.test(sql.replace(/,/g,' ')) || /select\s+.*salaire.*nom.*from\s+employes/i.test(sql.replace(/,/g,' ')); },
       win: "✓ CORRECT ! SELECT nom, salaire FROM employes; — La base de toute requête SQL.",
     },
     {
@@ -59,15 +55,15 @@ const generateSelectLevel = () => {
         " 5 | Magic Mouse   | Accessoire |   99  | 156",
       ],
       q: "Écrivez une requête pour afficher tous les produits (toutes les colonnes).",
-      a: (sql) => /select\s+\*\s+from\s+produits/i.test(sql),
+      a: function (sql) { return /select\s+\*\s+from\s+produits/i.test(sql); },
       win: "✓ PARFAIT ! SELECT * FROM produits; — L'étoile (*) sélectionne toutes les colonnes.",
     },
   ]);
-  const t = tables[0];
-  const tableDisplay = [t.schema, "-".repeat(t.schema.length), ...t.rows].join("\n");
+  var t = tables[0];
+  var tableDisplay = [t.schema, "-".repeat(t.schema.length)].concat(t.rows).join("\n");
   return {
     id: "select", title: "SELECT — Les Bases",
-    mission: `Table "${t.name}" :\n\n${tableDisplay}\n\n${t.q}`,
+    mission: "Table \"" + t.name + "\" :\n\n" + tableDisplay + "\n\n" + t.q,
     hint: "La syntaxe de base : SELECT <colonnes> FROM <table>",
     topic: "SELECT Basique",
     commands: {
@@ -75,9 +71,9 @@ const generateSelectLevel = () => {
       explain: { response: ["📖 SELECT — REQUÊTE DE BASE", "━━━━━━━━━━━━━━━━━━━━━━━━━━━", "SELECT est le mot-clé le plus utilisé en SQL.", "", "Syntaxe :", "  SELECT colonne1, colonne2 FROM table;", "  SELECT * FROM table;  -- toutes les colonnes", "", "Exemples :", "  SELECT nom, email FROM clients;", "  SELECT * FROM commandes;", "", "* = toutes les colonnes (pratique mais éviter en prod)"] },
       schema: { response: ["📋 STRUCTURE :", t.schema] },
     },
-    checkWin: (input) => t.a(input),
+    checkWin: function (input) { return t.a(input); },
     winResponse: [t.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^select/i.test(input)) return ["✗ Requête incorrecte. Vérifiez les colonnes et le nom de la table.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -85,14 +81,14 @@ const generateSelectLevel = () => {
 };
 
 // --- LEVEL: WHERE ---
-const generateWhereLevel = () => {
-  const scenarios = shuffle([
+var generateWhereLevel = function () {
+  var scenarios = shuffle([
     {
       table: "employes",
       schema: "id | nom       | poste          | salaire | ville",
       rows: [" 1 | Dupont    | Développeur    |  45000  | Paris", " 2 | Martin    | Designer       |  38000  | Lyon", " 3 | Bernard   | Chef de projet |  55000  | Paris", " 4 | Petit     | Développeur    |  42000  | Marseille", " 5 | Moreau    | DBA            |  48000  | Paris"],
       q: "Affichez les employés qui travaillent à Paris.",
-      a: (sql) => /select\s+.*from\s+employes\s+where\s+ville\s*=\s*'paris'/i.test(sql),
+      a: function (sql) { return /select\s+.*from\s+employes\s+where\s+ville\s*=\s*'paris'/i.test(sql); },
       win: "✓ EXACT ! WHERE ville = 'Paris' filtre les résultats. 3 employés parisiens trouvés !",
       hint: "Ajoutez WHERE colonne = 'valeur' après FROM.",
     },
@@ -101,24 +97,24 @@ const generateWhereLevel = () => {
       schema: "id | nom_produit | prix  | stock | categorie",
       rows: [" 1 | Laptop Pro  | 1299  | 8     | Laptop", " 2 | Souris RGB  |   49  | 200   | Accessoire", " 3 | Écran 27\"  |  399  | 15    | Moniteur", " 4 | Clavier     |   89  | 45    | Accessoire", " 5 | SSD 1To     |   79  | 120   | Stockage"],
       q: "Affichez les produits dont le prix est supérieur à 100.",
-      a: (sql) => /select\s+.*from\s+produits\s+where\s+prix\s*>\s*100/i.test(sql),
+      a: function (sql) { return /select\s+.*from\s+produits\s+where\s+prix\s*>\s*100/i.test(sql); },
       win: "✓ BIEN JOUÉ ! WHERE prix > 100 renvoie le Laptop et l'Écran.",
       hint: "Utilisez l'opérateur > pour comparer des valeurs numériques.",
     },
   ]);
-  const s = scenarios[0];
-  const tableDisplay = [s.schema, "-".repeat(s.schema.length), ...s.rows].join("\n");
+  var s = scenarios[0];
+  var tableDisplay = [s.schema, "-".repeat(s.schema.length)].concat(s.rows).join("\n");
   return {
     id: "where", title: "WHERE — Filtrer",
-    mission: `Table "${s.table}" :\n\n${tableDisplay}\n\n${s.q}`,
+    mission: "Table \"" + s.table + "\" :\n\n" + tableDisplay + "\n\n" + s.q,
     hint: s.hint, topic: "Clause WHERE",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre requête SQL directement      ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours sur WHERE           ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 WHERE — FILTRAGE", "━━━━━━━━━━━━━━━━━━━━", "WHERE filtre les lignes selon une condition.", "", "Opérateurs :", "  = égal       != ou <> différent", "  > supérieur  < inférieur", "  >= sup ou égal  <= inf ou égal", "  LIKE 'pattern%'  (recherche partielle)", "  IN ('a','b','c')  (liste de valeurs)", "  BETWEEN x AND y  (intervalle)", "  IS NULL / IS NOT NULL", "", "Exemple :", "  SELECT * FROM employes WHERE salaire > 40000;"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^select/i.test(input)) {
         if (!/where/i.test(input)) return ["✗ Il manque la clause WHERE pour filtrer.", "  Tapez 'hint' pour un indice."];
         return ["✗ Presque ! Vérifiez la condition de filtrage.", "  Tapez 'hint' pour un indice."];
@@ -129,14 +125,14 @@ const generateWhereLevel = () => {
 };
 
 // --- LEVEL: ORDER BY / LIMIT ---
-const generateOrderLevel = () => {
-  const s = pick([
+var generateOrderLevel = function () {
+  var s = pick([
     {
       table: "employes",
       schema: "id | nom       | poste          | salaire | ville",
       rows: [" 1 | Dupont    | Développeur    |  45000  | Paris", " 2 | Martin    | Designer       |  38000  | Lyon", " 3 | Bernard   | Chef de projet |  55000  | Paris", " 4 | Petit     | Développeur    |  42000  | Marseille", " 5 | Moreau    | DBA            |  48000  | Paris"],
       q: "Affichez les 3 employés les mieux payés (salaire décroissant).",
-      a: (sql) => /select\s+.*from\s+employes\s+order\s+by\s+salaire\s+desc\s+limit\s+3/i.test(sql),
+      a: function (sql) { return /select\s+.*from\s+employes\s+order\s+by\s+salaire\s+desc\s+limit\s+3/i.test(sql); },
       win: "✓ PARFAIT ! ORDER BY salaire DESC LIMIT 3 → Bernard (55K), Moreau (48K), Dupont (45K).",
       hint: "ORDER BY colonne DESC pour trier décroissant, LIMIT n pour limiter les résultats.",
     },
@@ -145,23 +141,23 @@ const generateOrderLevel = () => {
       schema: "id | nom       | moyenne | promo",
       rows: [" 1 | Alice     | 16.5    | M1", " 2 | Bob       | 12.0    | L3", " 3 | Charlie   | 18.2    | M1", " 4 | Diana     | 14.8    | M2", " 5 | Eve       | 15.3    | L3"],
       q: "Affichez tous les étudiants triés par moyenne décroissante.",
-      a: (sql) => /select\s+.*from\s+etudiants\s+order\s+by\s+moyenne\s+desc/i.test(sql),
+      a: function (sql) { return /select\s+.*from\s+etudiants\s+order\s+by\s+moyenne\s+desc/i.test(sql); },
       win: "✓ CORRECT ! ORDER BY moyenne DESC → Charlie (18.2), Alice (16.5), Eve (15.3)...",
       hint: "ORDER BY <colonne> DESC trie du plus grand au plus petit.",
     },
   ]);
-  const tableDisplay = [s.schema, "-".repeat(s.schema.length), ...s.rows].join("\n");
+  var tableDisplay = [s.schema, "-".repeat(s.schema.length)].concat(s.rows).join("\n");
   return {
     id: "orderby", title: "ORDER BY & LIMIT",
-    mission: `Table "${s.table}" :\n\n${tableDisplay}\n\n${s.q}`,
+    mission: "Table \"" + s.table + "\" :\n\n" + tableDisplay + "\n\n" + s.q,
     hint: s.hint, topic: "Tri & Pagination",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre requête SQL directement      ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours ORDER BY            ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 ORDER BY & LIMIT", "━━━━━━━━━━━━━━━━━━━━", "ORDER BY trie les résultats :", "  ASC = croissant (défaut)", "  DESC = décroissant", "", "LIMIT restreint le nombre de résultats :", "  LIMIT 10 → max 10 lignes", "  LIMIT 5 OFFSET 10 → 5 lignes à partir de la 11ème", "", "Exemples :", "  SELECT * FROM produits ORDER BY prix DESC;", "  SELECT * FROM logs ORDER BY date DESC LIMIT 100;", "  SELECT * FROM users LIMIT 20 OFFSET 40; -- page 3"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^select/i.test(input)) return ["✗ Vérifiez ORDER BY et/ou LIMIT.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -169,14 +165,14 @@ const generateOrderLevel = () => {
 };
 
 // --- LEVEL: GROUP BY / Agrégation ---
-const generateGroupByLevel = () => {
-  const s = pick([
+var generateGroupByLevel = function () {
+  var s = pick([
     {
       table: "ventes",
       schema: "id | vendeur  | produit    | montant | date",
       rows: [" 1 | Alice    | Laptop     |  1200   | 2025-01-15", " 2 | Bob      | Souris     |    49   | 2025-01-16", " 3 | Alice    | Écran      |   399   | 2025-01-17", " 4 | Charlie  | Laptop     |  1200   | 2025-01-18", " 5 | Bob      | Clavier    |    89   | 2025-01-19", " 6 | Alice    | SSD        |    79   | 2025-01-20"],
       q: "Calculez le montant TOTAL des ventes par vendeur.",
-      a: (sql) => /select\s+vendeur\s*,\s*sum\s*\(\s*montant\s*\)\s*.*from\s+ventes\s+group\s+by\s+vendeur/i.test(sql),
+      a: function (sql) { return /select\s+vendeur\s*,\s*sum\s*\(\s*montant\s*\)\s*.*from\s+ventes\s+group\s+by\s+vendeur/i.test(sql); },
       win: "✓ EXCELLENT ! Alice: 1678€, Bob: 138€, Charlie: 1200€. GROUP BY + SUM = agrégation !",
       hint: "SELECT vendeur, SUM(montant) FROM ... GROUP BY vendeur",
     },
@@ -185,23 +181,23 @@ const generateGroupByLevel = () => {
       schema: "id | nom       | departement | salaire",
       rows: [" 1 | Dupont    | IT          |  45000", " 2 | Martin    | RH          |  38000", " 3 | Bernard   | IT          |  55000", " 4 | Petit     | Marketing   |  42000", " 5 | Moreau    | IT          |  48000", " 6 | Leroy     | RH          |  41000"],
       q: "Comptez le nombre d'employés par département.",
-      a: (sql) => /select\s+departement\s*,\s*count\s*\(.*\)\s*.*from\s+employes\s+group\s+by\s+departement/i.test(sql),
+      a: function (sql) { return /select\s+departement\s*,\s*count\s*\(.*\)\s*.*from\s+employes\s+group\s+by\s+departement/i.test(sql); },
       win: "✓ BIEN ! IT: 3, RH: 2, Marketing: 1. COUNT(*) avec GROUP BY = comptage par groupe.",
       hint: "SELECT departement, COUNT(*) FROM ... GROUP BY departement",
     },
   ]);
-  const tableDisplay = [s.schema, "-".repeat(s.schema.length), ...s.rows].join("\n");
+  var tableDisplay = [s.schema, "-".repeat(s.schema.length)].concat(s.rows).join("\n");
   return {
     id: "groupby", title: "GROUP BY & AGRÉGATION",
-    mission: `Table "${s.table}" :\n\n${tableDisplay}\n\n${s.q}`,
+    mission: "Table \"" + s.table + "\" :\n\n" + tableDisplay + "\n\n" + s.q,
     hint: s.hint, topic: "Agrégation de Données",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre requête SQL directement      ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours GROUP BY            ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 GROUP BY & FONCTIONS D'AGRÉGATION", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "GROUP BY regroupe les lignes par valeur commune.", "", "Fonctions d'agrégation :", "  COUNT(*) — nombre de lignes", "  SUM(col) — somme", "  AVG(col) — moyenne", "  MIN(col) — minimum", "  MAX(col) — maximum", "", "Exemple :", "  SELECT ville, COUNT(*), AVG(salaire)", "  FROM employes", "  GROUP BY ville;", "", "HAVING = WHERE pour les groupes :", "  GROUP BY ville HAVING COUNT(*) > 2"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^select/i.test(input)) {
         if (!/group\s+by/i.test(input)) return ["✗ Il manque GROUP BY pour regrouper les résultats.", "  Tapez 'hint' pour un indice."];
         return ["✗ Presque ! Vérifiez la fonction d'agrégation.", "  Tapez 'hint' pour un indice."];
@@ -212,31 +208,31 @@ const generateGroupByLevel = () => {
 };
 
 // --- LEVEL: JOIN ---
-const generateJoinLevel = () => {
-  const s = pick([
+var generateJoinLevel = function () {
+  var s = pick([
     {
       tables: [
         { name: "clients", schema: "id | nom       | ville", rows: [" 1 | Alice     | Paris", " 2 | Bob       | Lyon", " 3 | Charlie   | Marseille"] },
         { name: "commandes", schema: "id | client_id | produit    | montant", rows: [" 1 |    1      | Laptop     |  1200", " 2 |    1      | Souris     |    49", " 3 |    2      | Écran      |   399", " 4 |    3      | Clavier    |    89"] },
       ],
       q: "Affichez le nom du client et le produit pour chaque commande (jointure).",
-      a: (sql) => /select\s+.*nom.*produit.*from\s+.*join\s+.*(on|using)/i.test(sql) || /select\s+.*produit.*nom.*from\s+.*join\s+.*(on|using)/i.test(sql),
+      a: function (sql) { return /select\s+.*nom.*produit.*from\s+.*join\s+.*(on|using)/i.test(sql) || /select\s+.*produit.*nom.*from\s+.*join\s+.*(on|using)/i.test(sql); },
       win: "✓ PARFAIT ! JOIN lie les tables par clé étrangère. Alice→Laptop, Alice→Souris, Bob→Écran, Charlie→Clavier.",
       hint: "SELECT ... FROM clients JOIN commandes ON clients.id = commandes.client_id",
     },
   ]);
-  const tableDisplays = s.tables.map(t => `Table "${t.name}" :\n${t.schema}\n${"-".repeat(t.schema.length)}\n${t.rows.join("\n")}`).join("\n\n");
+  var tableDisplays = s.tables.map(function (t) { return "Table \"" + t.name + "\" :\n" + t.schema + "\n" + "-".repeat(t.schema.length) + "\n" + t.rows.join("\n"); }).join("\n\n");
   return {
     id: "join", title: "JOIN — Jointures",
-    mission: `${tableDisplays}\n\n${s.q}`,
+    mission: tableDisplays + "\n\n" + s.q,
     hint: s.hint, topic: "Jointures SQL",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre requête SQL directement      ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours JOIN                ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 JOIN — JOINTURES", "━━━━━━━━━━━━━━━━━━━━", "JOIN combine des lignes de 2+ tables :", "", "INNER JOIN : uniquement les correspondances", "  SELECT * FROM A JOIN B ON A.id = B.a_id;", "", "LEFT JOIN : tout de A + correspondances de B", "  SELECT * FROM A LEFT JOIN B ON A.id = B.a_id;", "", "RIGHT JOIN : tout de B + correspondances de A", "", "FULL JOIN : tout de A et B", "", "Clé étrangère = colonne qui référence une autre table", "  commandes.client_id → clients.id"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^select/i.test(input)) {
         if (!/join/i.test(input)) return ["✗ Vous avez besoin d'un JOIN pour lier les deux tables.", "  Tapez 'hint' pour un indice."];
         if (!/on|using/i.test(input)) return ["✗ Il manque la condition ON pour spécifier la jointure.", "  Tapez 'hint' pour un indice."];
@@ -248,35 +244,35 @@ const generateJoinLevel = () => {
 };
 
 // --- LEVEL: INSERT / UPDATE / DELETE ---
-const generateDMLLevel = () => {
-  const scenarios = shuffle([
+var generateDMLLevel = function () {
+  var scenarios = shuffle([
     {
       context: "Table 'employes' (id, nom, poste, salaire, ville). Vous devez ajouter un nouvel employé : Sophie Durand, Data Analyst, 43000€, à Lyon.",
       q: "Écrivez la requête INSERT.",
-      a: (sql) => /insert\s+into\s+employes/i.test(sql) && /sophie|durand/i.test(sql) && /data\s*analyst/i.test(sql),
+      a: function (sql) { return /insert\s+into\s+employes/i.test(sql) && /sophie|durand/i.test(sql) && /data\s*analyst/i.test(sql); },
       win: "✓ INSERT INTO employes (nom, poste, salaire, ville) VALUES ('Sophie Durand', 'Data Analyst', 43000, 'Lyon');",
       hint: "INSERT INTO table (col1, col2, ...) VALUES (val1, val2, ...)",
     },
     {
       context: "Table 'produits' (id, nom, prix, stock). Le produit id=3 a changé de prix : nouveau prix 349€.",
       q: "Écrivez la requête UPDATE.",
-      a: (sql) => /update\s+produits\s+set\s+prix\s*=\s*349/i.test(sql) && /where\s+id\s*=\s*3/i.test(sql),
+      a: function (sql) { return /update\s+produits\s+set\s+prix\s*=\s*349/i.test(sql) && /where\s+id\s*=\s*3/i.test(sql); },
       win: "✓ UPDATE produits SET prix = 349 WHERE id = 3; — TOUJOURS mettre un WHERE avec UPDATE !",
       hint: "UPDATE table SET colonne = valeur WHERE condition",
     },
   ]);
-  const s = scenarios[0];
+  var s = scenarios[0];
   return {
     id: "dml", title: "INSERT / UPDATE / DELETE",
-    mission: `📋 CONTEXTE :\n${s.context}\n\n${s.q}`,
+    mission: "📋 CONTEXTE :\n" + s.context + "\n\n" + s.q,
     hint: s.hint, topic: "Manipulation de Données (DML)",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre requête SQL directement      ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours DML                 ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 DML — DATA MANIPULATION LANGUAGE", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "INSERT — Ajouter des lignes :", "  INSERT INTO table (cols) VALUES (vals);", "", "UPDATE — Modifier des lignes :", "  UPDATE table SET col = val WHERE condition;", "  ⚠ SANS WHERE → modifie TOUTES les lignes !", "", "DELETE — Supprimer des lignes :", "  DELETE FROM table WHERE condition;", "  ⚠ SANS WHERE → supprime TOUT !", "", "Règle d'or : TOUJOURS tester avec SELECT d'abord,", "puis transformer en UPDATE/DELETE."] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^(insert|update|delete)/i.test(input)) return ["✗ Presque ! Vérifiez la syntaxe et les valeurs.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -284,28 +280,28 @@ const generateDMLLevel = () => {
 };
 
 // --- LEVEL: Sous-requêtes ---
-const generateSubqueryLevel = () => {
-  const s = {
+var generateSubqueryLevel = function () {
+  var s = {
     table: "employes",
     schema: "id | nom       | poste          | salaire | dept",
     rows: [" 1 | Dupont    | Dev            |  45000  | IT", " 2 | Martin    | Designer       |  38000  | Marketing", " 3 | Bernard   | CTO            |  75000  | IT", " 4 | Petit     | Dev            |  42000  | IT", " 5 | Moreau    | DBA            |  48000  | IT", " 6 | Leroy     | CM             |  35000  | Marketing"],
     q: "Affichez les employés dont le salaire est supérieur à la MOYENNE de tous les salaires.",
-    a: (sql) => /select\s+.*from\s+employes\s+where\s+salaire\s*>\s*\(\s*select\s+avg\s*\(\s*salaire\s*\)/i.test(sql),
+    a: function (sql) { return /select\s+.*from\s+employes\s+where\s+salaire\s*>\s*\(\s*select\s+avg\s*\(\s*salaire\s*\)/i.test(sql); },
     win: "✓ SOUS-REQUÊTE ! La moyenne est ~47167€. Bernard (75K) et Moreau (48K) sont au-dessus.",
     hint: "WHERE salaire > (SELECT AVG(salaire) FROM employes)",
   };
-  const tableDisplay = [s.schema, "-".repeat(s.schema.length), ...s.rows].join("\n");
+  var tableDisplay = [s.schema, "-".repeat(s.schema.length)].concat(s.rows).join("\n");
   return {
     id: "subquery", title: "SOUS-REQUÊTES",
-    mission: `Table "${s.table}" :\n\n${tableDisplay}\n\n${s.q}`,
+    mission: "Table \"" + s.table + "\" :\n\n" + tableDisplay + "\n\n" + s.q,
     hint: s.hint, topic: "Sous-requêtes (Subqueries)",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre requête SQL directement      ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours sous-requêtes       ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 SOUS-REQUÊTES", "━━━━━━━━━━━━━━━━━", "Une requête imbriquée dans une autre :", "", "  SELECT * FROM employes", "  WHERE salaire > (SELECT AVG(salaire) FROM employes);", "", "Utilisations :", "  • Comparer à un agrégat (AVG, MAX, MIN...)", "  • Filtrer avec IN (SELECT id FROM ...)", "  • Créer des tables temporaires (FROM subquery)", "  • EXISTS pour vérifier l'existence", "", "Alternatives modernes :", "  • CTE : WITH nom AS (SELECT ...) SELECT ...", "  • Window functions : OVER(PARTITION BY ...)"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^select/i.test(input)) return ["✗ Utilisez une sous-requête dans la clause WHERE.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -313,27 +309,27 @@ const generateSubqueryLevel = () => {
 };
 
 // --- LEVEL: CREATE TABLE / Modélisation ---
-const generateCreateLevel = () => {
-  const s = pick([
+var generateCreateLevel = function () {
+  var s = pick([
     {
       context: "Vous concevez une base pour un blog. Créez la table 'articles' avec : id (entier, clé primaire, auto-incrémenté), titre (texte max 200, non null), contenu (texte long), auteur_id (entier, clé étrangère), date_publication (date, défaut aujourd'hui).",
       q: "Écrivez le CREATE TABLE.",
-      a: (sql) => /create\s+table\s+articles/i.test(sql) && /primary\s+key/i.test(sql) && /titre/i.test(sql) && /auteur_id/i.test(sql),
+      a: function (sql) { return /create\s+table\s+articles/i.test(sql) && /primary\s+key/i.test(sql) && /titre/i.test(sql) && /auteur_id/i.test(sql); },
       win: "✓ Table 'articles' créée ! Les contraintes (PK, NOT NULL, FK, DEFAULT) garantissent l'intégrité des données.",
       hint: "CREATE TABLE articles (id INT PRIMARY KEY AUTO_INCREMENT, titre VARCHAR(200) NOT NULL, ...)",
     },
   ]);
   return {
     id: "create", title: "CREATE TABLE",
-    mission: `📋 CONTEXTE :\n${s.context}\n\n${s.q}`,
+    mission: "📋 CONTEXTE :\n" + s.context + "\n\n" + s.q,
     hint: s.hint, topic: "DDL — Modélisation",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre requête SQL directement      ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours CREATE TABLE        ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 CREATE TABLE — MODÉLISATION", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "Types de données courants :", "  INT, BIGINT — entiers", "  VARCHAR(n) — texte variable (max n)", "  TEXT — texte long", "  DATE, DATETIME, TIMESTAMP", "  DECIMAL(p,s) — nombres précis", "  BOOLEAN", "", "Contraintes :", "  PRIMARY KEY — identifiant unique", "  NOT NULL — obligatoire", "  UNIQUE — pas de doublon", "  DEFAULT val — valeur par défaut", "  FOREIGN KEY — référence autre table", "  CHECK (condition) — validation", "", "AUTO_INCREMENT (MySQL) / SERIAL (PostgreSQL)"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^create/i.test(input)) return ["✗ Vérifiez les colonnes, types et contraintes.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -341,25 +337,25 @@ const generateCreateLevel = () => {
 };
 
 // --- LEVEL: INDEX & Optimisation ---
-const generateIndexLevel = () => {
-  const s = {
+var generateIndexLevel = function () {
+  var s = {
     context: "Votre table 'logs' contient 10 millions de lignes. La requête suivante prend 45 secondes :\n\n  SELECT * FROM logs WHERE user_id = 42 AND date > '2025-01-01';\n\nLe EXPLAIN montre un 'Full Table Scan'.",
     q: "Quelle commande SQL créeriez-vous pour accélérer cette requête ? (tapez la commande)",
-    a: (sql) => /create\s+index/i.test(sql) && /logs/i.test(sql) && /(user_id|date)/i.test(sql),
+    a: function (sql) { return /create\s+index/i.test(sql) && /logs/i.test(sql) && /(user_id|date)/i.test(sql); },
     win: "✓ CREATE INDEX ! Un index sur (user_id, date) transforme le scan en lookup quasi-instantané. De 45s à <100ms !",
     hint: "CREATE INDEX idx_nom ON table (colonne1, colonne2)",
   };
   return {
     id: "index", title: "INDEX & OPTIMISATION",
-    mission: `📋 SITUATION :\n${s.context}\n\n${s.q}`,
+    mission: "📋 SITUATION :\n" + s.context + "\n\n" + s.q,
     hint: s.hint, topic: "Performance & Index",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande SQL                 ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours INDEX               ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 INDEX — OPTIMISATION", "━━━━━━━━━━━━━━━━━━━━━━━", "Un index est comme l'index d'un livre :", "  Sans index → lire TOUTES les pages (Full Scan)", "  Avec index → aller directement à la bonne page", "", "Création :", "  CREATE INDEX idx_nom ON table (col1, col2);", "", "Quand indexer :", "  ✓ Colonnes dans WHERE fréquents", "  ✓ Colonnes de JOIN", "  ✓ Colonnes de ORDER BY", "  ✗ Tables très petites", "  ✗ Colonnes très souvent modifiées", "", "EXPLAIN pour analyser une requête :", "  EXPLAIN SELECT * FROM logs WHERE user_id = 42;"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^(create|alter)/i.test(input)) return ["✗ Pensez à créer un INDEX. Vérifiez la syntaxe.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -367,8 +363,8 @@ const generateIndexLevel = () => {
 };
 
 // --- LEVEL: Normalisation ---
-const generateNormalisationLevel = () => {
-  const s = {
+var generateNormalisationLevel = function () {
+  var s = {
     context: "Vous avez cette table mal conçue 'commandes_flat' :\n\nid | client_nom | client_email       | produit   | prix | quantite\n1  | Alice      | alice@mail.com     | Laptop    | 1200 | 1\n2  | Alice      | alice@mail.com     | Souris    |   49 | 2\n3  | Bob        | bob@mail.com       | Laptop    | 1200 | 1\n\nLe nom et email d'Alice sont DUPLIQUÉS !",
     q: "Quel concept de base de données résout ce problème de duplication ? (answer <concept>)",
     a: ["normalisation", "normalization", "3nf", "forme normale", "normal form"],
@@ -377,19 +373,19 @@ const generateNormalisationLevel = () => {
   };
   return {
     id: "normalisation", title: "NORMALISATION",
-    mission: `📋 PROBLÈME :\n${s.context}\n\n${s.q}`,
+    mission: "📋 PROBLÈME :\n" + s.context + "\n\n" + s.q,
     hint: s.hint, topic: "Normalisation & Modélisation",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  answer <réponse>  - Répondre             ║", "║  hint              - Obtenir un indice    ║", "║  explain           - Mini-cours           ║", "║  mission           - Revoir l'énoncé      ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 NORMALISATION", "━━━━━━━━━━━━━━━━━", "Décomposer pour éviter la redondance :", "", "1NF : Valeurs atomiques (pas de listes dans une cellule)", "2NF : Chaque colonne dépend de TOUTE la clé primaire", "3NF : Pas de dépendance transitive", "", "Avant (dénormalisé) :", "  commandes_flat (client_nom, client_email, produit...)", "", "Après (3NF) :", "  clients (id, nom, email)", "  produits (id, nom, prix)", "  commandes (id, client_id, produit_id, quantite)", "", "Avantages : moins de redondance, cohérence, maintenance", "Inconvénient : plus de JOINs nécessaires"] },
     },
-    checkWin: (input) => {
+    checkWin: function (input) {
       if (!input.startsWith("answer ")) return false;
-      const ans = input.slice(7).trim().toLowerCase();
-      return s.a.some(a => ans.includes(a));
+      var ans = input.slice(7).trim().toLowerCase();
+      return s.a.some(function (a) { return ans.includes(a); });
     },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (input.startsWith("answer ")) return ["✗ Pensez au processus qui structure les tables pour éviter la duplication.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -397,8 +393,8 @@ const generateNormalisationLevel = () => {
 };
 
 // --- LEVEL: Transactions ---
-const generateTransactionLevel = () => {
-  const s = {
+var generateTransactionLevel = function () {
+  var s = {
     context: "Vous transférez 500€ du compte A vers le compte B. Les deux opérations sont :\n\n  UPDATE comptes SET solde = solde - 500 WHERE id = 'A';\n  UPDATE comptes SET solde = solde + 500 WHERE id = 'B';\n\nSi le serveur crash entre les deux requêtes, le compte A perd 500€ mais B ne les reçoit pas !",
     q: "Quel mécanisme SQL garantit que les DEUX opérations réussissent ou AUCUNE ? (answer <mécanisme>)",
     a: ["transaction", "begin", "commit", "rollback", "acid"],
@@ -407,19 +403,19 @@ const generateTransactionLevel = () => {
   };
   return {
     id: "transaction", title: "TRANSACTIONS & ACID",
-    mission: `📋 PROBLÈME :\n${s.context}\n\n${s.q}`,
+    mission: "📋 PROBLÈME :\n" + s.context + "\n\n" + s.q,
     hint: s.hint, topic: "Transactions & Intégrité",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  answer <réponse>  - Répondre             ║", "║  hint              - Obtenir un indice    ║", "║  explain           - Mini-cours           ║", "║  mission           - Revoir l'énoncé      ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 TRANSACTIONS & ACID", "━━━━━━━━━━━━━━━━━━━━━━━", "BEGIN;", "  UPDATE comptes SET solde = solde - 500 WHERE id = 'A';", "  UPDATE comptes SET solde = solde + 500 WHERE id = 'B';", "COMMIT;  -- valide tout", "-- ou ROLLBACK;  -- annule tout", "", "ACID :", "  Atomicité — tout ou rien", "  Cohérence — état valide avant/après", "  Isolation — transactions indépendantes", "  Durabilité — persisté après COMMIT", "", "Niveaux d'isolation :", "  READ UNCOMMITTED → READ COMMITTED →", "  REPEATABLE READ → SERIALIZABLE"] },
     },
-    checkWin: (input) => {
+    checkWin: function (input) {
       if (!input.startsWith("answer ")) return false;
-      const ans = input.slice(7).trim().toLowerCase();
-      return s.a.some(a => ans.includes(a));
+      var ans = input.slice(7).trim().toLowerCase();
+      return s.a.some(function (a) { return ans.includes(a); });
     },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (input.startsWith("answer ")) return ["✗ Pensez au mécanisme qui regroupe plusieurs opérations en un bloc atomique.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -430,218 +426,48 @@ const generateTransactionLevel = () => {
 // PROFILES
 // ═══════════════════════════════════════════════
 
-const PROFILES = {
+var PROFILES = {
   "débutant": {
     label: "🟢 DÉBUTANT", desc: "Lycéen / Découverte SQL", color: "#06b6d4",
-    levels: () => [generateSelectLevel(), generateWhereLevel(), generateOrderLevel(), generateGroupByLevel(), generateDMLLevel()],
+    levels: function () { return [generateSelectLevel(), generateWhereLevel(), generateOrderLevel(), generateGroupByLevel(), generateDMLLevel()]; },
   },
   "intermédiaire": {
     label: "🟡 INTERMÉDIAIRE", desc: "Étudiant Bac+2 / Dev Junior", color: "#facc15",
-    levels: () => [generateSelectLevel(), generateWhereLevel(), generateOrderLevel(), generateGroupByLevel(), generateJoinLevel(), generateDMLLevel(), generateSubqueryLevel()],
+    levels: function () { return [generateSelectLevel(), generateWhereLevel(), generateOrderLevel(), generateGroupByLevel(), generateJoinLevel(), generateDMLLevel(), generateSubqueryLevel()]; },
   },
   "expert": {
     label: "🔴 EXPERT", desc: "M1/M2 / DBA", color: "#f87171",
-    levels: () => [generateSelectLevel(), generateWhereLevel(), generateOrderLevel(), generateGroupByLevel(), generateJoinLevel(), generateDMLLevel(), generateSubqueryLevel(), generateCreateLevel(), generateIndexLevel(), generateNormalisationLevel(), generateTransactionLevel()],
+    levels: function () { return [generateSelectLevel(), generateWhereLevel(), generateOrderLevel(), generateGroupByLevel(), generateJoinLevel(), generateDMLLevel(), generateSubqueryLevel(), generateCreateLevel(), generateIndexLevel(), generateNormalisationLevel(), generateTransactionLevel()]; },
   },
 };
 
 // ═══════════════════════════════════════════════
-// DATA RAIN ANIMATION
+// RENDER
 // ═══════════════════════════════════════════════
 
-const DataRain = () => {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const resize = () => { canvas.width = canvas.parentElement.offsetWidth; canvas.height = canvas.parentElement.offsetHeight; };
-    resize();
-    const chars = "SELECT FROM WHERE JOIN GROUP ORDER INSERT UPDATE DELETE CREATE INDEX TABLE INT VARCHAR NULL PRIMARY KEY FOREIGN";
-    const fontSize = 14;
-    const columns = Math.floor(canvas.width / fontSize);
-    const drops = Array(columns).fill(1);
-    const draw = () => {
-      ctx.fillStyle = "rgba(0,0,0,0.04)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = fontSize + "px monospace";
-      for (let i = 0; i < drops.length; i++) {
-        const c = chars[Math.floor(Math.random() * chars.length)];
-        ctx.globalAlpha = Math.random() * 0.25 + 0.05;
-        ctx.fillStyle = pick(["#06b6d4", "#22d3ee", "#67e8f9", "#a5f3fc"]);
-        ctx.fillText(c, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
-      }
-      ctx.globalAlpha = 1;
-    };
-    const interval = setInterval(draw, 55);
-    window.addEventListener("resize", resize);
-    return () => { clearInterval(interval); window.removeEventListener("resize", resize); };
-  }, []);
-  return <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.12, pointerEvents: "none" }} />;
-};
-
-// ═══════════════════════════════════════════════
-// MAIN GAME
-// ═══════════════════════════════════════════════
-
-function SQLGame() {
-  const [screen, setScreen] = useState("menu");
-  const [profile, setProfile] = useState(null);
-  const [levels, setLevels] = useState([]);
-  const [levelIdx, setLevelIdx] = useState(0);
-  const [lines, setLines] = useState([]);
-  const [input, setInput] = useState("");
-  const [hintsUsed, setHintsUsed] = useState(0);
-  const [startTime, setStartTime] = useState(null);
-  const [playerName, setPlayerName] = useState("");
-  const [leaderboard, setLeaderboard] = useState([]);
-  const termRef = useRef(null);
-  const inputRef = useRef(null);
-
-  const scrollToBottom = useCallback(() => { if (termRef.current) setTimeout(() => { termRef.current.scrollTop = termRef.current.scrollHeight; }, 50); }, []);
-  useEffect(() => { scrollToBottom(); }, [lines, scrollToBottom]);
-
-  const addLines = (newLines, type) => { type = type || "response"; setLines((prev) => [...prev, ...newLines.map((text) => ({ type, text }))]); };
-
-  const startGame = (profileKey) => {
-    const gen = PROFILES[profileKey].levels();
-    setProfile(profileKey); setLevels(gen); setLevelIdx(0); setHintsUsed(0); setStartTime(Date.now());
-    setLines([
-      { type: "system", text: "══════ NIVEAU 1/" + gen.length + " : " + gen[0].title + " ══════" },
-      { type: "system", text: "🗄️ " + gen[0].topic },
-      { type: "mission", text: gen[0].mission },
-      { type: "empty", text: "" },
-    ]);
-    setScreen("game");
-  };
-
-  const advanceLevel = () => {
-    if (levelIdx < levels.length - 1) {
-      const next = levelIdx + 1; setLevelIdx(next);
-      setTimeout(() => { addLines(["", "══════ NIVEAU " + (next + 1) + "/" + levels.length + " : " + levels[next].title + " ══════", "🗄️ " + levels[next].topic], "system"); addLines([levels[next].mission], "mission"); addLines([""], "empty"); }, 800);
-    } else { setTimeout(() => setScreen("victory"), 1000); }
-  };
-
-  const handleCommand = (cmd) => {
-    const original = cmd.trim(); const trimmed = original.toLowerCase(); if (!trimmed) return;
-    setLines((prev) => [...prev, { type: "input", text: "sql> " + original }]);
-    if (trimmed === "clear") { setLines([]); return; }
-    if (trimmed === "mission") { addLines([levels[levelIdx].mission], "mission"); return; }
-    if (trimmed === "hint") { setHintsUsed((h) => h + 1); addLines(["💡 " + levels[levelIdx].hint], "hint"); return; }
-    if (trimmed === "score") { const e = Math.floor((Date.now() - startTime) / 1000); addLines(["Niveau: " + (levelIdx + 1) + "/" + levels.length + " | Hints: " + hintsUsed + " | Temps: " + Math.floor(e / 60) + "m" + String(e % 60).padStart(2, "0") + "s"], "system"); return; }
-
-    const cl = levels[levelIdx];
-    const proc = trimmed.startsWith("answer ") ? "answer " + original.slice(7) : trimmed;
-    if (cl.checkWin && cl.checkWin(proc)) { if (cl.winResponse) addLines(cl.winResponse, "success"); advanceLevel(); return; }
-    if (cl.commands[trimmed]) { const r = cl.commands[trimmed]; addLines(r.response, r.nextLevel ? "success" : "response"); if (r.nextLevel) advanceLevel(); return; }
-    if (cl.defaultResponse) { const r = cl.defaultResponse(proc); if (r) { addLines(r, "response"); return; } }
-    addLines(["Commande non reconnue. Tapez 'help'."], "error");
-  };
-
-  const handleKeyDown = (e) => { if (e.key === "Enter") { handleCommand(input); setInput(""); } };
-  const focusInput = () => { if (inputRef.current) inputRef.current.focus(); };
-  const getScore = () => { const e = Math.floor((Date.now() - startTime) / 1000); const base = { "débutant": 500, "intermédiaire": 750, "expert": 1000 }[profile] || 500; return Math.max(0, base - hintsUsed * 50 - Math.floor(e / 15)); };
-
-  // ─── MENU ───
-  if (screen === "menu") {
-    return (
-      <div style={{ minHeight: "100vh", background: "#0a0f1a", fontFamily: "'Fira Code','Cascadia Code',monospace", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-        <DataRain />
-        <div style={{ zIndex: 10, textAlign: "center", maxWidth: "700px", padding: "20px" }}>
-          <div style={{ color: "#06b6d466", fontSize: "11px", letterSpacing: "8px", marginBottom: "16px" }}>ÉCOLE IT VALENCIENNES</div>
-          <h1 style={{ color: "#06b6d4", fontSize: "36px", margin: "0 0 6px", textShadow: "0 0 30px rgba(6,182,212,0.4)", letterSpacing: "4px" }}>SQL TERMINAL</h1>
-          <div style={{ color: "#06b6d488", fontSize: "13px", letterSpacing: "5px", marginBottom: "40px" }}>MAÎTRISEZ LES BASES DE DONNÉES</div>
-          <div style={{ marginBottom: "30px" }}>
-            <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Votre pseudo (optionnel)" maxLength={20}
-              style={{ background: "rgba(6,182,212,0.05)", border: "1px solid #0e3a4a", color: "#06b6d4", padding: "10px 16px", fontSize: "14px", fontFamily: "inherit", textAlign: "center", borderRadius: "4px", outline: "none", width: "250px" }}
-              onFocus={(e) => { e.target.style.borderColor = "#06b6d4"; }} onBlur={(e) => { e.target.style.borderColor = "#0e3a4a"; }} />
-          </div>
-          <div style={{ color: "#888", fontSize: "13px", marginBottom: "24px", letterSpacing: "2px" }}>CHOISISSEZ VOTRE NIVEAU</div>
-          <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-            {Object.entries(PROFILES).map(([key, p]) => (
-              <button key={key} onClick={() => startGame(key)}
-                style={{ background: "rgba(10,15,26,0.8)", border: "1px solid " + p.color + "33", color: p.color, padding: "20px 24px", fontFamily: "inherit", fontSize: "13px", cursor: "pointer", borderRadius: "4px", width: "200px", textAlign: "left", transition: "all 0.3s", boxShadow: "0 0 20px " + p.color + "11" }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = p.color; e.currentTarget.style.boxShadow = "0 0 30px " + p.color + "33"; }}
-                onMouseOut={(e) => { e.currentTarget.style.borderColor = p.color + "33"; e.currentTarget.style.boxShadow = "0 0 20px " + p.color + "11"; }}>
-                <div style={{ fontSize: "16px", marginBottom: "8px", fontWeight: "bold" }}>{p.label}</div>
-                <div style={{ color: "#888", fontSize: "11px", lineHeight: "1.5" }}>{p.desc}</div>
-                <div style={{ color: "#555", fontSize: "10px", marginTop: "8px" }}>{p.levels().length} niveaux</div>
-              </button>
-            ))}
-          </div>
-          {leaderboard.length > 0 && (<div style={{ marginTop: "40px", maxWidth: "400px", margin: "40px auto 0" }}><div style={{ color: "#06b6d4", fontSize: "12px", letterSpacing: "2px", marginBottom: "12px" }}>🏆 LEADERBOARD</div>{leaderboard.slice(0, 8).map((e, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", color: i === 0 ? "#06b6d4" : "#666", fontSize: "12px", padding: "4px 0", borderBottom: "1px solid #111" }}><span>{i + 1}. {e.name}</span><span>{e.score} pts</span></div>))}</div>)}
-        </div>
-      </div>
-    );
-  }
-
-  // ─── VICTORY ───
-  if (screen === "victory") {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000); const score = getScore(); const p = PROFILES[profile];
-    return (
-      <div style={{ minHeight: "100vh", background: "#0a0f1a", fontFamily: "'Fira Code',monospace", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-        <DataRain />
-        <div style={{ zIndex: 10, textAlign: "center", padding: "50px", border: "1px solid " + p.color + "44", borderRadius: "8px", background: "rgba(10,15,26,0.9)", boxShadow: "0 0 60px " + p.color + "15" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>🏆</div>
-          <h1 style={{ color: p.color, fontSize: "26px", margin: "0 0 6px", letterSpacing: "4px" }}>DATABASE MASTER</h1>
-          <div style={{ color: "#555", fontSize: "12px", letterSpacing: "3px", marginBottom: "30px" }}>{p.label}</div>
-          <div style={{ color: "#888", marginBottom: "30px", lineHeight: "2.2", fontSize: "14px" }}>
-            <div>Niveaux : <span style={{ color: p.color }}>{levels.length}/{levels.length}</span></div>
-            <div>Temps : <span style={{ color: p.color }}>{Math.floor(elapsed / 60)}m {String(elapsed % 60).padStart(2, "0")}s</span></div>
-            <div>Indices : <span style={{ color: hintsUsed === 0 ? "#4ade80" : "#facc15" }}>{hintsUsed}</span></div>
-            <div style={{ fontSize: "22px", marginTop: "8px" }}>Score : <span style={{ color: p.color }}>{score}</span></div>
-          </div>
-          <div style={{ color: "#475569", fontSize: "11px", marginBottom: "24px", maxWidth: "380px", lineHeight: "1.6" }}>{levels.map((l) => l.topic).join(" · ")}</div>
-          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => { setLeaderboard((prev) => [...prev, { name: playerName || "Anonyme", score, profile: p.label }].sort((a, b) => b.score - a.score)); setScreen("menu"); }} style={{ background: p.color, color: "#0a0f1a", border: "none", padding: "12px 28px", fontFamily: "inherit", fontSize: "13px", fontWeight: "bold", cursor: "pointer", letterSpacing: "2px", borderRadius: "3px" }}>SAUVER & MENU</button>
-            <button onClick={() => startGame(profile)} style={{ background: "transparent", color: p.color, border: "1px solid " + p.color, padding: "12px 28px", fontFamily: "inherit", fontSize: "13px", cursor: "pointer", letterSpacing: "2px", borderRadius: "3px" }}>REJOUER</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── GAME ───
-  const p = PROFILES[profile];
-  return (
-    <div style={{ minHeight: "100vh", background: "#0a0f1a", fontFamily: "'Fira Code',monospace", display: "flex", flexDirection: "column", position: "relative" }} onClick={focusInput}>
-      <div style={{ background: "#0f1724", borderBottom: "1px solid #1a2a3a", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <span style={{ color: "#06b6d4", fontSize: "13px", fontWeight: "bold" }}>🗄️ SQL TERMINAL</span>
-          <span style={{ color: "#1a2a3a" }}>|</span>
-          <span style={{ color: p.color, fontSize: "11px" }}>{p.label}</span>
-          <span style={{ color: "#1a2a3a" }}>|</span>
-          <span style={{ color: "#4ade80", fontSize: "11px" }}>{levels[levelIdx]?.title}</span>
-        </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          {playerName && <span style={{ color: "#555", fontSize: "11px" }}>{playerName}</span>}
-          <span style={{ color: "#555", fontSize: "11px" }}>LVL {levelIdx + 1}/{levels.length}</span>
-          <div style={{ display: "flex", gap: "3px" }}>
-            {levels.map((_, i) => (<div key={i} style={{ width: "7px", height: "7px", borderRadius: "50%", background: i < levelIdx ? "#4ade80" : i === levelIdx ? p.color : "#1a2a3a", boxShadow: i < levelIdx ? "0 0 4px #4ade80" : i === levelIdx ? "0 0 6px " + p.color : "none" }} />))}
-          </div>
-          <button onClick={() => setScreen("menu")} style={{ background: "none", border: "1px solid #1a2a3a", color: "#555", padding: "2px 8px", fontFamily: "inherit", fontSize: "10px", cursor: "pointer", borderRadius: "2px" }}>MENU</button>
-        </div>
-      </div>
-      <div ref={termRef} style={{ flex: 1, overflowY: "auto", padding: "14px 16px", paddingBottom: "65px" }}>
-        {lines.map((line, i) => {
-          if (line.type === "empty") return <div key={i} style={{ height: "10px" }} />;
-          const colors = { system: "#06b6d4", input: "#e2e8f0", success: "#4ade80", error: "#f87171", hint: "#facc15", mission: "#94a3b8", response: "#7a9ab8" };
-          return <div key={i} style={{ color: colors[line.type] || "#7a9ab8", fontSize: "13px", lineHeight: "1.7", whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{line.text}</div>;
-        })}
-      </div>
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0f1724", borderTop: "1px solid #1a2a3a", padding: "10px 16px", display: "flex", alignItems: "center", gap: "8px", zIndex: 10 }}>
-        <span style={{ color: "#06b6d4", fontSize: "14px", fontWeight: "bold" }}>sql&gt;</span>
-        <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} autoFocus placeholder="Tapez votre requête SQL..."
-          style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#e2e8f0", fontSize: "14px", fontFamily: "inherit", caretColor: "#06b6d4" }} />
-        <span style={{ color: "#1a2a3a", fontSize: "10px" }}>ENTER ↵</span>
-      </div>
-    </div>
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<SQLGame />);
+var root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(GameEngine, {
+  title: "SQL TERMINAL",
+  icon: "🗄️",
+  profiles: PROFILES,
+  rainConfig: { chars: "SELECT FROM WHERE JOIN GROUP ORDER INSERT UPDATE DELETE CREATE INDEX TABLE INT VARCHAR NULL PRIMARY KEY FOREIGN", colors: ["#06b6d4", "#22d3ee", "#67e8f9", "#a5f3fc"], fontSize: 14, speed: 55, opacity: 0.12, fadeAlpha: 0.04 },
+  backgroundColor: "#0a0f1a",
+  headerBg: "#0f1724",
+  headerBorder: "#1a2a3a",
+  themeColor: "#06b6d4",
+  terminalColors: { system: "#06b6d4", input: "#e2e8f0", success: "#4ade80", error: "#f87171", hint: "#facc15", mission: "#94a3b8", response: "#7a9ab8" },
+  promptSymbol: "sql>",
+  inputPlaceholder: "Tapez votre requête SQL...",
+  subtitleText: "MAÎTRISEZ LES BASES DE DONNÉES",
+  victoryTitle: "DATABASE MASTER",
+  baseScores: { "débutant": 500, "intermédiaire": 750, "expert": 1000 },
+  preprocessInput: function (original, trimmed) {
+    return trimmed.startsWith("answer ") ? "answer " + original.slice(7) : trimmed;
+  },
+  getInputPrefix: function (original) { return "sql> " + original; },
+  getUnknownMsg: function () { return "Commande non reconnue. Tapez 'help'."; },
+  topicIcon: "🗄️"
+}));
 
     </script>
 </body>

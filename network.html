@@ -7,6 +7,7 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+    <script src="shared/utils.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #root { height: 100%; width: 100%; }
@@ -21,15 +22,7 @@
 
 const { useState, useEffect, useRef, useCallback } = React;
 
-// ─── Utility: shuffle array ───
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+// shuffle and pick provided by shared/utils.js
 
 // ─── Level definitions ───
 function generateLevels() {
@@ -39,7 +32,7 @@ function generateLevels() {
     { mask: "255.255.255.128", cidr: "/25", hosts: "126", network: "10.0.0.0", broadcast: "10.0.0.127" },
     { mask: "255.255.0.0", cidr: "/16", hosts: "65534", network: "172.16.0.0", broadcast: "172.16.255.255" },
   ];
-  const subnet = subnetSets[Math.floor(Math.random() * subnetSets.length)];
+  const subnet = pick(subnetSets);
 
   // Random DNS for level 3
   const dnsSets = [
@@ -47,7 +40,7 @@ function generateLevels() {
     { domain: "mail.campus-tech.io", ip: "185.12.64.10", type: "A" },
     { domain: "intranet.univ-paris.fr", ip: "193.51.24.81", type: "A" },
   ];
-  const dns = dnsSets[Math.floor(Math.random() * dnsSets.length)];
+  const dns = pick(dnsSets);
 
   // Random firewall port for level 5
   const fwSets = [
@@ -55,7 +48,7 @@ function generateLevels() {
     { port: "5432", service: "PostgreSQL", rule: "DENY" },
     { port: "27017", service: "MongoDB", rule: "DENY" },
   ];
-  const fw = fwSets[Math.floor(Math.random() * fwSets.length)];
+  const fw = pick(fwSets);
 
   // Random VLAN for level 6
   const vlanSets = [
@@ -63,7 +56,7 @@ function generateLevels() {
     { id: "20", name: "DEV", subnet: "192.168.20.0/24" },
     { id: "30", name: "GUEST", subnet: "192.168.30.0/24" },
   ];
-  const vlan = vlanSets[Math.floor(Math.random() * vlanSets.length)];
+  const vlan = pick(vlanSets);
 
   return [
     // ─── LEVEL 0: INTRO ───

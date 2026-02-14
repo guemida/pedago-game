@@ -6,7 +6,9 @@
     <title>🐧 Linux & Sysadmin — Challenge Terminal</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+    <script src="shared/utils.js"></script>
+    <script src="shared/rain.js"></script>
+    <script src="shared/game-engine.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #root { height: 100%; width: 100%; }
@@ -14,242 +16,237 @@
 </head>
 <body>
     <div id="root"></div>
-  
-    <script type="text/babel" data-presets="react">
 
-const { useState, useEffect, useRef, useCallback } = React;
-
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    <script>
 
 // ═══════════════════════════════════════════════
 // LEVEL GENERATORS
 // ═══════════════════════════════════════════════
 
-const generateNavigationLevel = () => {
-  const s = pick([
-    { q: "Vous êtes dans /home/user. Affichez le contenu du répertoire courant.", a: (cmd) => /^ls(\s|$)/i.test(cmd), win: "✓ ls affiche les fichiers et dossiers ! Options utiles : ls -la (détaillé + cachés), ls -lh (tailles lisibles).", hint: "La commande la plus basique pour lister les fichiers..." },
-    { q: "Déplacez-vous dans le répertoire /var/log.", a: (cmd) => /^cd\s+\/var\/log\s*$/i.test(cmd), win: "✓ cd /var/log — Vous êtes dans le répertoire des logs système !", hint: "cd = change directory" },
-    { q: "Affichez le chemin du répertoire où vous vous trouvez actuellement.", a: (cmd) => /^pwd\s*$/i.test(cmd), win: "✓ pwd (Print Working Directory) → /home/user. Toujours savoir où on est !", hint: "3 lettres, signifie 'Print Working Directory'" },
+var generateNavigationLevel = function () {
+  var s = pick([
+    { q: "Vous êtes dans /home/user. Affichez le contenu du répertoire courant.", a: function (cmd) { return /^ls(\s|$)/i.test(cmd); }, win: "✓ ls affiche les fichiers et dossiers ! Options utiles : ls -la (détaillé + cachés), ls -lh (tailles lisibles).", hint: "La commande la plus basique pour lister les fichiers..." },
+    { q: "Déplacez-vous dans le répertoire /var/log.", a: function (cmd) { return /^cd\s+\/var\/log\s*$/i.test(cmd); }, win: "✓ cd /var/log — Vous êtes dans le répertoire des logs système !", hint: "cd = change directory" },
+    { q: "Affichez le chemin du répertoire où vous vous trouvez actuellement.", a: function (cmd) { return /^pwd\s*$/i.test(cmd); }, win: "✓ pwd (Print Working Directory) → /home/user. Toujours savoir où on est !", hint: "3 lettres, signifie 'Print Working Directory'" },
   ]);
   return {
     id: "nav", title: "NAVIGATION FILESYSTEM",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande Linux appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande Linux appropriée.",
     hint: s.hint, topic: "Navigation & Filesystem",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande Linux               ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours navigation          ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 NAVIGATION LINUX", "━━━━━━━━━━━━━━━━━━━━", "pwd — Afficher le répertoire courant", "ls — Lister les fichiers", "  ls -l  (détaillé)", "  ls -a  (fichiers cachés)", "  ls -la (les deux)", "cd — Changer de répertoire", "  cd /chemin/absolu", "  cd dossier    (relatif)", "  cd ..         (parent)", "  cd ~          (home)", "  cd -          (précédent)", "", "Chemins spéciaux :", "  /     racine", "  ~     home de l'utilisateur", "  .     répertoire courant", "  ..    répertoire parent"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: () => null,
+    defaultResponse: function () { return null; },
   };
 };
 
-const generateFileOpsLevel = () => {
-  const s = pick([
-    { q: "Créez un fichier vide appelé 'rapport.txt'.", a: (cmd) => /^touch\s+rapport\.txt\s*$/i.test(cmd), win: "✓ touch rapport.txt — Fichier créé ! touch met aussi à jour le timestamp si le fichier existe.", hint: "La commande pour créer un fichier vide commence par 'touch'" },
-    { q: "Copiez le fichier 'config.ini' vers 'config.ini.bak' (backup).", a: (cmd) => /^cp\s+config\.ini\s+config\.ini\.bak\s*$/i.test(cmd), win: "✓ cp config.ini config.ini.bak — Toujours faire un backup avant de modifier un fichier de config !", hint: "cp = copy. Syntaxe : cp source destination" },
-    { q: "Affichez le contenu du fichier '/etc/hostname'.", a: (cmd) => /^cat\s+\/etc\/hostname\s*$/i.test(cmd), win: "✓ cat /etc/hostname → 'srv-web-01'. cat concatène et affiche le contenu des fichiers.", hint: "cat = concatenate. Affiche le contenu d'un fichier." },
+var generateFileOpsLevel = function () {
+  var s = pick([
+    { q: "Créez un fichier vide appelé 'rapport.txt'.", a: function (cmd) { return /^touch\s+rapport\.txt\s*$/i.test(cmd); }, win: "✓ touch rapport.txt — Fichier créé ! touch met aussi à jour le timestamp si le fichier existe.", hint: "La commande pour créer un fichier vide commence par 'touch'" },
+    { q: "Copiez le fichier 'config.ini' vers 'config.ini.bak' (backup).", a: function (cmd) { return /^cp\s+config\.ini\s+config\.ini\.bak\s*$/i.test(cmd); }, win: "✓ cp config.ini config.ini.bak — Toujours faire un backup avant de modifier un fichier de config !", hint: "cp = copy. Syntaxe : cp source destination" },
+    { q: "Affichez le contenu du fichier '/etc/hostname'.", a: function (cmd) { return /^cat\s+\/etc\/hostname\s*$/i.test(cmd); }, win: "✓ cat /etc/hostname → 'srv-web-01'. cat concatène et affiche le contenu des fichiers.", hint: "cat = concatenate. Affiche le contenu d'un fichier." },
   ]);
   return {
     id: "fileops", title: "OPÉRATIONS FICHIERS",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande Linux appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande Linux appropriée.",
     hint: s.hint, topic: "Fichiers & Répertoires",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande Linux               ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours fichiers            ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 OPÉRATIONS SUR FICHIERS", "━━━━━━━━━━━━━━━━━━━━━━━━━━", "cat fichier — Afficher le contenu", "less fichier — Naviguer dans le contenu", "head -n 10 fichier — 10 premières lignes", "tail -n 10 fichier — 10 dernières lignes", "touch fichier — Créer un fichier vide", "cp source dest — Copier", "mv source dest — Déplacer / Renommer", "rm fichier — Supprimer (ATTENTION !)", "  rm -r dossier — Supprimer récursivement", "  rm -rf — Force sans confirmation", "mkdir dossier — Créer un répertoire", "  mkdir -p a/b/c — Créer l'arborescence"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: () => null,
+    defaultResponse: function () { return null; },
   };
 };
 
-const generatePermissionsLevel = () => {
-  const perms = pick([
-    { display: "-rw-r--r--", owner: "alice", group: "dev", file: "secret.conf", q: "Le fichier 'secret.conf' a les permissions : -rw-r--r-- (alice:dev).\nRendez-le lisible et exécutable UNIQUEMENT par le propriétaire (aucun droit pour les autres).", a: (cmd) => /^chmod\s+(700|u=rwx,go=|u=rwx,g=,o=)\s+secret\.conf/i.test(cmd), win: "✓ chmod 700 secret.conf — Seule Alice peut lire, écrire et exécuter !", hint: "chmod 700 ou chmod u=rwx,go= ..." },
-    { display: "-rwxrwxrwx", owner: "root", group: "root", file: "deploy.sh", q: "Le script 'deploy.sh' a les permissions -rwxrwxrwx (root:root).\nC'est DANGEREUX ! Restreignez à : propriétaire rwx, groupe rx, autres rien.", a: (cmd) => /^chmod\s+(750|u=rwx,g=rx,o=)\s+deploy\.sh/i.test(cmd), win: "✓ chmod 750 deploy.sh — Principe du moindre privilège appliqué !", hint: "rwx=7, rx=5, rien=0. Donc 7-5-0..." },
+var generatePermissionsLevel = function () {
+  var perms = pick([
+    { display: "-rw-r--r--", owner: "alice", group: "dev", file: "secret.conf", q: "Le fichier 'secret.conf' a les permissions : -rw-r--r-- (alice:dev).\nRendez-le lisible et exécutable UNIQUEMENT par le propriétaire (aucun droit pour les autres).", a: function (cmd) { return /^chmod\s+(700|u=rwx,go=|u=rwx,g=,o=)\s+secret\.conf/i.test(cmd); }, win: "✓ chmod 700 secret.conf — Seule Alice peut lire, écrire et exécuter !", hint: "chmod 700 ou chmod u=rwx,go= ..." },
+    { display: "-rwxrwxrwx", owner: "root", group: "root", file: "deploy.sh", q: "Le script 'deploy.sh' a les permissions -rwxrwxrwx (root:root).\nC'est DANGEREUX ! Restreignez à : propriétaire rwx, groupe rx, autres rien.", a: function (cmd) { return /^chmod\s+(750|u=rwx,g=rx,o=)\s+deploy\.sh/i.test(cmd); }, win: "✓ chmod 750 deploy.sh — Principe du moindre privilège appliqué !", hint: "rwx=7, rx=5, rien=0. Donc 7-5-0..." },
   ]);
   return {
     id: "perms", title: "PERMISSIONS",
-    mission: `📋 MISSION :\n${perms.q}\n\nTapez la commande chmod appropriée.`,
+    mission: "📋 MISSION :\n" + perms.q + "\n\nTapez la commande chmod appropriée.",
     hint: perms.hint, topic: "Permissions & Sécurité",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande chmod               ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours permissions         ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 PERMISSIONS LINUX", "━━━━━━━━━━━━━━━━━━━━", "Format : -rwxrwxrwx = type|owner|group|others", "  r=4 (read) w=2 (write) x=1 (execute)", "", "Notation octale :", "  7 = rwx  6 = rw-  5 = r-x  4 = r--", "  3 = -wx  2 = -w-  1 = --x  0 = ---", "", "chmod 755 file → rwxr-xr-x", "chmod 644 file → rw-r--r--", "chmod 700 file → rwx------", "", "chown user:group file — Changer le propriétaire", "chgrp group file — Changer le groupe", "", "Principe du moindre privilège :", "  Donner le MINIMUM de droits nécessaires."] },
     },
-    checkWin: (input) => perms.a(input),
+    checkWin: function (input) { return perms.a(input); },
     winResponse: [perms.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^chmod/i.test(input)) return ["✗ Vérifiez les valeurs octales ou symboliques.", "  Tapez 'hint' pour un indice."];
       return null;
     },
   };
 };
 
-const generateGrepLevel = () => {
-  const s = pick([
-    { q: "Le fichier '/var/log/auth.log' contient des milliers de lignes.\nRecherchez toutes les lignes contenant 'Failed password'.", a: (cmd) => /^grep\s+['"]?failed\s*password['"]?\s+\/var\/log\/auth\.log/i.test(cmd), win: "✓ grep 'Failed password' /var/log/auth.log — 47 tentatives échouées trouvées ! Possible brute force ?", hint: "grep 'motif' fichier" },
-    { q: "Comptez le nombre de lignes contenant 'ERROR' dans le fichier 'app.log'.", a: (cmd) => /^grep\s+-c\s+['"]?error['"]?\s+app\.log/i.test(cmd) || /^grep\s+['"]?error['"]?\s+app\.log\s*\|\s*wc\s+-l/i.test(cmd), win: "✓ grep -c 'ERROR' app.log → 156 erreurs. L'option -c compte les occurrences !", hint: "grep -c pour compter, ou grep ... | wc -l" },
+var generateGrepLevel = function () {
+  var s = pick([
+    { q: "Le fichier '/var/log/auth.log' contient des milliers de lignes.\nRecherchez toutes les lignes contenant 'Failed password'.", a: function (cmd) { return /^grep\s+['"]?failed\s*password['"]?\s+\/var\/log\/auth\.log/i.test(cmd); }, win: "✓ grep 'Failed password' /var/log/auth.log — 47 tentatives échouées trouvées ! Possible brute force ?", hint: "grep 'motif' fichier" },
+    { q: "Comptez le nombre de lignes contenant 'ERROR' dans le fichier 'app.log'.", a: function (cmd) { return /^grep\s+-c\s+['"]?error['"]?\s+app\.log/i.test(cmd) || /^grep\s+['"]?error['"]?\s+app\.log\s*\|\s*wc\s+-l/i.test(cmd); }, win: "✓ grep -c 'ERROR' app.log → 156 erreurs. L'option -c compte les occurrences !", hint: "grep -c pour compter, ou grep ... | wc -l" },
   ]);
   return {
     id: "grep", title: "GREP & RECHERCHE",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
     hint: s.hint, topic: "Grep, Pipes & Filtres",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande grep                ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours grep & pipes        ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 GREP & PIPES", "━━━━━━━━━━━━━━━━", "grep 'motif' fichier — Rechercher un texte", "  -i  insensible à la casse", "  -r  récursif (dans les sous-dossiers)", "  -c  compter les occurrences", "  -n  afficher les numéros de ligne", "  -v  inverser (lignes qui NE contiennent PAS)", "", "Pipes (|) — Chaîner des commandes :", "  cat fichier | grep 'erreur' | wc -l", "  ps aux | grep nginx", "  ls -la | sort -k5 -n | tail -5", "", "Autres filtres :", "  sort — trier", "  uniq — dédupliquer", "  wc -l — compter les lignes", "  cut -d: -f1 — extraire des colonnes", "  awk '{print $1}' — traitement avancé"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^grep/i.test(input)) return ["✗ Vérifiez la syntaxe grep et les options.", "  Tapez 'hint' pour un indice."];
       return null;
     },
   };
 };
 
-const generateProcessLevel = () => {
-  const s = pick([
-    { q: "Un processus 'node' consomme 98% du CPU. Son PID est 4287.\nTuez ce processus immédiatement.", a: (cmd) => /^kill\s+(-9\s+)?4287\s*$/i.test(cmd) || /^kill\s+-SIGKILL\s+4287/i.test(cmd), win: "✓ kill -9 4287 — Processus terminé ! Le signal 9 (SIGKILL) force l'arrêt immédiat.", hint: "kill -9 <PID> pour forcer l'arrêt" },
-    { q: "Affichez la liste des processus en cours avec leur consommation CPU/RAM.", a: (cmd) => /^(top|htop|ps\s+aux)\s*$/i.test(cmd), win: "✓ Bien joué ! ps aux / top / htop — Les outils essentiels de monitoring.", hint: "ps aux, top ou htop — commandes de monitoring" },
+var generateProcessLevel = function () {
+  var s = pick([
+    { q: "Un processus 'node' consomme 98% du CPU. Son PID est 4287.\nTuez ce processus immédiatement.", a: function (cmd) { return /^kill\s+(-9\s+)?4287\s*$/i.test(cmd) || /^kill\s+-SIGKILL\s+4287/i.test(cmd); }, win: "✓ kill -9 4287 — Processus terminé ! Le signal 9 (SIGKILL) force l'arrêt immédiat.", hint: "kill -9 <PID> pour forcer l'arrêt" },
+    { q: "Affichez la liste des processus en cours avec leur consommation CPU/RAM.", a: function (cmd) { return /^(top|htop|ps\s+aux)\s*$/i.test(cmd); }, win: "✓ Bien joué ! ps aux / top / htop — Les outils essentiels de monitoring.", hint: "ps aux, top ou htop — commandes de monitoring" },
   ]);
   return {
     id: "process", title: "GESTION DES PROCESSUS",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
     hint: s.hint, topic: "Processus & Monitoring",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours processus           ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 GESTION DES PROCESSUS", "━━━━━━━━━━━━━━━━━━━━━━━━", "ps — Snapshot des processus", "  ps aux — Tous les processus (détaillé)", "  ps -ef — Format complet", "", "top / htop — Monitoring en temps réel", "  Trier par CPU, RAM, etc.", "", "kill — Envoyer un signal", "  kill PID — SIGTERM (arrêt propre)", "  kill -9 PID — SIGKILL (arrêt forcé)", "  kill -HUP PID — Recharger la config", "", "Autres :", "  bg/fg — Arrière-plan / premier plan", "  nohup cmd & — Survive à la déconnexion", "  systemctl status/start/stop service"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: () => null,
+    defaultResponse: function () { return null; },
   };
 };
 
-const generateUserLevel = () => {
-  const s = pick([
-    { q: "Créez un nouvel utilisateur 'stagiaire' sur le système.", a: (cmd) => /^(sudo\s+)?(useradd|adduser)\s+stagiaire/i.test(cmd), win: "✓ useradd stagiaire — Utilisateur créé ! N'oubliez pas de définir un mot de passe avec passwd.", hint: "useradd ou adduser + le nom" },
-    { q: "Ajoutez l'utilisateur 'dev01' au groupe 'docker'.", a: (cmd) => /^(sudo\s+)?usermod\s+(-aG|--append\s+--groups)\s+docker\s+dev01/i.test(cmd), win: "✓ usermod -aG docker dev01 — L'option -aG AJOUTE le groupe sans supprimer les autres !", hint: "usermod -aG <groupe> <utilisateur>" },
+var generateUserLevel = function () {
+  var s = pick([
+    { q: "Créez un nouvel utilisateur 'stagiaire' sur le système.", a: function (cmd) { return /^(sudo\s+)?(useradd|adduser)\s+stagiaire/i.test(cmd); }, win: "✓ useradd stagiaire — Utilisateur créé ! N'oubliez pas de définir un mot de passe avec passwd.", hint: "useradd ou adduser + le nom" },
+    { q: "Ajoutez l'utilisateur 'dev01' au groupe 'docker'.", a: function (cmd) { return /^(sudo\s+)?usermod\s+(-aG|--append\s+--groups)\s+docker\s+dev01/i.test(cmd); }, win: "✓ usermod -aG docker dev01 — L'option -aG AJOUTE le groupe sans supprimer les autres !", hint: "usermod -aG <groupe> <utilisateur>" },
   ]);
   return {
     id: "users", title: "GESTION DES UTILISATEURS",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
     hint: s.hint, topic: "Utilisateurs & Groupes",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours utilisateurs        ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 UTILISATEURS & GROUPES", "━━━━━━━━━━━━━━━━━━━━━━━━━━", "useradd user — Créer un utilisateur", "userdel user — Supprimer", "passwd user — Définir le mot de passe", "usermod -aG group user — Ajouter au groupe", "  ⚠ -a = append (IMPORTANT, sinon écrase !)", "", "groups user — Voir les groupes d'un user", "id user — Voir UID, GID, groupes", "", "Fichiers clés :", "  /etc/passwd — Liste des utilisateurs", "  /etc/shadow — Mots de passe hashés", "  /etc/group — Liste des groupes", "", "sudo — Exécuter en tant que root", "  sudo commande", "  sudo -u user commande — En tant qu'un autre user"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: () => null,
+    defaultResponse: function () { return null; },
   };
 };
 
-const generateDiskLevel = () => {
-  const s = pick([
-    { q: "Affichez l'espace disque utilisé sur toutes les partitions montées.", a: (cmd) => /^df\s+(-h)?\s*$/i.test(cmd), win: "✓ df -h — Disk Free ! Le -h rend les tailles lisibles (Go, Mo). /dev/sda1 : 78% utilisé.", hint: "df = Disk Free. Ajoutez -h pour des tailles lisibles." },
-    { q: "Trouvez les 5 plus gros fichiers dans /var/log.", a: (cmd) => /^(du|find|ls)/i.test(cmd) && /(sort|head|tail)/i.test(cmd), win: "✓ du -sh /var/log/* | sort -rh | head -5 — syslog fait 2.3Go, time to rotate !", hint: "du pour la taille + sort + head pour le top 5" },
+var generateDiskLevel = function () {
+  var s = pick([
+    { q: "Affichez l'espace disque utilisé sur toutes les partitions montées.", a: function (cmd) { return /^df\s+(-h)?\s*$/i.test(cmd); }, win: "✓ df -h — Disk Free ! Le -h rend les tailles lisibles (Go, Mo). /dev/sda1 : 78% utilisé.", hint: "df = Disk Free. Ajoutez -h pour des tailles lisibles." },
+    { q: "Trouvez les 5 plus gros fichiers dans /var/log.", a: function (cmd) { return /^(du|find|ls)/i.test(cmd) && /(sort|head|tail)/i.test(cmd); }, win: "✓ du -sh /var/log/* | sort -rh | head -5 — syslog fait 2.3Go, time to rotate !", hint: "du pour la taille + sort + head pour le top 5" },
   ]);
   return {
     id: "disk", title: "ESPACE DISQUE",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
     hint: s.hint, topic: "Stockage & Disques",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours disque              ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 GESTION DU STOCKAGE", "━━━━━━━━━━━━━━━━━━━━━━━", "df -h — Espace libre par partition", "du -sh dossier — Taille d'un dossier", "du -sh * | sort -rh | head -10 — Top 10", "", "lsblk — Liste des disques/partitions", "mount — Monter un disque", "umount — Démonter", "fdisk -l — Info partitions", "", "Nettoyage :", "  journalctl --vacuum-size=100M", "  apt clean / apt autoremove", "  find /tmp -mtime +30 -delete", "", "⚠ Un disque plein = serveur en panne !"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: () => null,
+    defaultResponse: function () { return null; },
   };
 };
 
-const generateCronLevel = () => {
-  const s = {
+var generateCronLevel = function () {
+  var s = {
     q: "Vous devez planifier un backup automatique : exécuter '/scripts/backup.sh' tous les jours à 2h du matin.\n\nÉcrivez la ligne crontab correspondante.",
-    a: (cmd) => /^0\s+2\s+\*\s+\*\s+\*\s+\/scripts\/backup\.sh\s*$/i.test(cmd),
+    a: function (cmd) { return /^0\s+2\s+\*\s+\*\s+\*\s+\/scripts\/backup\.sh\s*$/i.test(cmd); },
     win: "✓ 0 2 * * * /scripts/backup.sh — Backup planifié à 02:00 chaque jour !",
     hint: "Format cron : minute heure jour mois jour_semaine commande. 2h du matin = 0 2 * * *",
   };
   return {
     id: "cron", title: "CRON & AUTOMATISATION",
-    mission: `📋 MISSION :\n${s.q}`,
+    mission: "📋 MISSION :\n" + s.q,
     hint: s.hint, topic: "Crontab & Scheduling",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre ligne crontab                ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours crontab             ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 CRONTAB", "━━━━━━━━━━", "Format : min heure jour mois jour_sem commande", "  ┌───── minute (0-59)", "  │ ┌───── heure (0-23)", "  │ │ ┌───── jour du mois (1-31)", "  │ │ │ ┌───── mois (1-12)", "  │ │ │ │ ┌───── jour semaine (0-7, 0/7=dim)", "  │ │ │ │ │", "  * * * * * commande", "", "Exemples :", "  0 2 * * * → Tous les jours à 2h", "  */15 * * * * → Toutes les 15 minutes", "  0 0 1 * * → 1er de chaque mois", "  0 9 * * 1-5 → Lun-Ven à 9h", "", "crontab -e — Éditer", "crontab -l — Lister"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^\d/.test(input) || /^\*/.test(input)) return ["✗ Vérifiez le format : minute heure jour mois jour_semaine commande", "  Tapez 'hint' pour un indice."];
       return null;
     },
   };
 };
 
-const generateNetworkLinuxLevel = () => {
-  const s = pick([
-    { q: "Affichez toutes les interfaces réseau et leurs adresses IP.", a: (cmd) => /^(ip\s+a(ddr)?|ifconfig)\s*$/i.test(cmd), win: "✓ ip a — eth0: 192.168.1.42/24, lo: 127.0.0.1. ip a remplace ifconfig sur les systèmes modernes.", hint: "ip a (ou ifconfig sur les anciens systèmes)" },
-    { q: "Vérifiez quels ports sont en écoute sur le serveur.", a: (cmd) => /^(ss\s+-tlnp|netstat\s+-tlnp|ss\s+-tunlp|netstat\s+-tunlp)/i.test(cmd), win: "✓ ss -tlnp — Port 22 (SSH), 80 (Nginx), 3306 (MySQL) en écoute. Tout est normal.", hint: "ss -tlnp ou netstat -tlnp — t=TCP, l=listening, n=numeric, p=process" },
+var generateNetworkLinuxLevel = function () {
+  var s = pick([
+    { q: "Affichez toutes les interfaces réseau et leurs adresses IP.", a: function (cmd) { return /^(ip\s+a(ddr)?|ifconfig)\s*$/i.test(cmd); }, win: "✓ ip a — eth0: 192.168.1.42/24, lo: 127.0.0.1. ip a remplace ifconfig sur les systèmes modernes.", hint: "ip a (ou ifconfig sur les anciens systèmes)" },
+    { q: "Vérifiez quels ports sont en écoute sur le serveur.", a: function (cmd) { return /^(ss\s+-tlnp|netstat\s+-tlnp|ss\s+-tunlp|netstat\s+-tunlp)/i.test(cmd); }, win: "✓ ss -tlnp — Port 22 (SSH), 80 (Nginx), 3306 (MySQL) en écoute. Tout est normal.", hint: "ss -tlnp ou netstat -tlnp — t=TCP, l=listening, n=numeric, p=process" },
   ]);
   return {
     id: "netlinux", title: "RÉSEAU LINUX",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
     hint: s.hint, topic: "Configuration Réseau",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours réseau Linux        ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 RÉSEAU LINUX", "━━━━━━━━━━━━━━━━", "ip a — Interfaces & adresses IP", "ip route — Table de routage", "ss -tlnp — Ports en écoute (remplace netstat)", "ping host — Test de connectivité", "traceroute host — Chemin réseau", "dig/nslookup — Résolution DNS", "curl URL — Requête HTTP", "wget URL — Télécharger un fichier", "", "Fichiers config :", "  /etc/hosts — DNS local", "  /etc/resolv.conf — Serveurs DNS", "  /etc/network/interfaces — Config réseau (Debian)", "  /etc/netplan/ — Config réseau (Ubuntu récent)"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: () => null,
+    defaultResponse: function () { return null; },
   };
 };
 
-const generateServiceLevel = () => {
-  const s = pick([
-    { q: "Le service 'nginx' ne répond plus. Redémarrez-le.", a: (cmd) => /^(sudo\s+)?systemctl\s+restart\s+nginx/i.test(cmd), win: "✓ systemctl restart nginx — Service redémarré ! Vérifiez avec systemctl status nginx.", hint: "systemctl restart <service>" },
-    { q: "Configurez le service 'docker' pour qu'il démarre automatiquement au boot.", a: (cmd) => /^(sudo\s+)?systemctl\s+enable\s+docker/i.test(cmd), win: "✓ systemctl enable docker — Docker démarrera automatiquement à chaque reboot !", hint: "systemctl enable <service> pour le démarrage automatique" },
+var generateServiceLevel = function () {
+  var s = pick([
+    { q: "Le service 'nginx' ne répond plus. Redémarrez-le.", a: function (cmd) { return /^(sudo\s+)?systemctl\s+restart\s+nginx/i.test(cmd); }, win: "✓ systemctl restart nginx — Service redémarré ! Vérifiez avec systemctl status nginx.", hint: "systemctl restart <service>" },
+    { q: "Configurez le service 'docker' pour qu'il démarre automatiquement au boot.", a: function (cmd) { return /^(sudo\s+)?systemctl\s+enable\s+docker/i.test(cmd); }, win: "✓ systemctl enable docker — Docker démarrera automatiquement à chaque reboot !", hint: "systemctl enable <service> pour le démarrage automatique" },
   ]);
   return {
     id: "service", title: "SERVICES & SYSTEMD",
-    mission: `📋 MISSION :\n${s.q}\n\nTapez la commande appropriée.`,
+    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
     hint: s.hint, topic: "Systemctl & Services",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande systemctl           ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours systemd             ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 SYSTEMD & SERVICES", "━━━━━━━━━━━━━━━━━━━━━━", "systemctl status service — État", "systemctl start service — Démarrer", "systemctl stop service — Arrêter", "systemctl restart service — Redémarrer", "systemctl enable service — Auto au boot", "systemctl disable service — Désactiver auto", "", "journalctl -u service — Logs du service", "journalctl -f — Suivre les logs en temps réel", "", "Services courants :", "  nginx, apache2 — Web", "  mysql, postgresql — BDD", "  ssh — Accès distant", "  docker — Conteneurs", "  cron — Tâches planifiées"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^(sudo\s+)?systemctl/i.test(input)) return ["✗ Vérifiez l'action (start/stop/restart/enable).", "  Tapez 'hint' pour un indice."];
       return null;
     },
   };
 };
 
-const generateShellScriptLevel = () => {
-  const s = {
+var generateShellScriptLevel = function () {
+  var s = {
     q: "Complétez cette commande one-liner : trouver tous les fichiers .log de plus de 100Mo dans /var et les supprimer.\n\nTapez la commande 'find' appropriée.",
-    a: (cmd) => /^find\s+\/var\s+.*-name\s+['"]\*\.log['"]\s+.*-size\s+\+100M/i.test(cmd) && /-delete|xargs\s+rm|exec\s+rm/i.test(cmd),
+    a: function (cmd) { return /^find\s+\/var\s+.*-name\s+['"]\*\.log['"]\s+.*-size\s+\+100M/i.test(cmd) && /-delete|xargs\s+rm|exec\s+rm/i.test(cmd); },
     win: "✓ find /var -name '*.log' -size +100M -delete — 3 fichiers supprimés, 4.7Go libérés !",
     hint: "find /var -name '*.log' -size +100M -delete",
   };
   return {
     id: "shell", title: "FIND & ONE-LINERS",
-    mission: `📋 MISSION :\n${s.q}`,
+    mission: "📋 MISSION :\n" + s.q,
     hint: s.hint, topic: "Shell Avancé",
     commands: {
       help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande find                ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours find                ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
       explain: { response: ["📖 FIND — RECHERCHE AVANCÉE", "━━━━━━━━━━━━━━━━━━━━━━━━━━━", "find chemin [options] [action]", "", "Filtres :", "  -name '*.log' — Par nom (glob)", "  -type f/d — Fichier ou dossier", "  -size +100M — Plus de 100Mo", "  -mtime -7 — Modifié il y a <7 jours", "  -user alice — Appartenant à alice", "  -perm 777 — Permissions exactes", "", "Actions :", "  -print — Afficher (défaut)", "  -delete — Supprimer", "  -exec cmd {} \\; — Exécuter une commande", "  | xargs cmd — Passer en argument", "", "Exemple : find / -name '*.tmp' -mtime +30 -delete"] },
     },
-    checkWin: (input) => s.a(input),
+    checkWin: function (input) { return s.a(input); },
     winResponse: [s.win],
-    defaultResponse: (input) => {
+    defaultResponse: function (input) {
       if (/^find/i.test(input)) return ["✗ Vérifiez les options -name, -size et l'action -delete.", "  Tapez 'hint' pour un indice."];
       return null;
     },
@@ -260,213 +257,45 @@ const generateShellScriptLevel = () => {
 // PROFILES
 // ═══════════════════════════════════════════════
 
-const PROFILES = {
+var PROFILES = {
   "débutant": {
     label: "🟢 DÉBUTANT", desc: "Lycéen / Première fois sur Linux", color: "#84cc16",
-    levels: () => [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel()],
+    levels: function () { return [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel()]; },
   },
   "intermédiaire": {
     label: "🟡 INTERMÉDIAIRE", desc: "Étudiant IT / Bac+2", color: "#facc15",
-    levels: () => [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel(), generateUserLevel(), generateDiskLevel()],
+    levels: function () { return [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel(), generateUserLevel(), generateDiskLevel()]; },
   },
   "expert": {
     label: "🔴 EXPERT", desc: "M1/M2 / Sysadmin", color: "#f87171",
-    levels: () => [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel(), generateUserLevel(), generateDiskLevel(), generateCronLevel(), generateNetworkLinuxLevel(), generateServiceLevel(), generateShellScriptLevel()],
+    levels: function () { return [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel(), generateUserLevel(), generateDiskLevel(), generateCronLevel(), generateNetworkLinuxLevel(), generateServiceLevel(), generateShellScriptLevel()]; },
   },
 };
 
 // ═══════════════════════════════════════════════
-// TERMINAL RAIN ANIMATION
+// RENDER
 // ═══════════════════════════════════════════════
 
-const TermRain = () => {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const resize = () => { canvas.width = canvas.parentElement.offsetWidth; canvas.height = canvas.parentElement.offsetHeight; };
-    resize();
-    const chars = "$ sudo apt chmod grep find ls cd cat rm cp mv mkdir df du ps kill top ssh scp rsync cron bash /etc /var /home root user";
-    const fontSize = 14;
-    const columns = Math.floor(canvas.width / fontSize);
-    const drops = Array(columns).fill(1);
-    const draw = () => {
-      ctx.fillStyle = "rgba(0,0,0,0.04)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = fontSize + "px monospace";
-      for (let i = 0; i < drops.length; i++) {
-        const c = chars[Math.floor(Math.random() * chars.length)];
-        ctx.globalAlpha = Math.random() * 0.25 + 0.05;
-        ctx.fillStyle = pick(["#84cc16", "#a3e635", "#bef264", "#d9f99d"]);
-        ctx.fillText(c, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
-      }
-      ctx.globalAlpha = 1;
-    };
-    const interval = setInterval(draw, 55);
-    window.addEventListener("resize", resize);
-    return () => { clearInterval(interval); window.removeEventListener("resize", resize); };
-  }, []);
-  return <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.12, pointerEvents: "none" }} />;
-};
-
-// ═══════════════════════════════════════════════
-// MAIN GAME
-// ═══════════════════════════════════════════════
-
-function LinuxGame() {
-  const [screen, setScreen] = useState("menu");
-  const [profile, setProfile] = useState(null);
-  const [levels, setLevels] = useState([]);
-  const [levelIdx, setLevelIdx] = useState(0);
-  const [lines, setLines] = useState([]);
-  const [input, setInput] = useState("");
-  const [hintsUsed, setHintsUsed] = useState(0);
-  const [startTime, setStartTime] = useState(null);
-  const [playerName, setPlayerName] = useState("");
-  const [leaderboard, setLeaderboard] = useState([]);
-  const termRef = useRef(null);
-  const inputRef = useRef(null);
-
-  const scrollToBottom = useCallback(() => { if (termRef.current) setTimeout(() => { termRef.current.scrollTop = termRef.current.scrollHeight; }, 50); }, []);
-  useEffect(() => { scrollToBottom(); }, [lines, scrollToBottom]);
-  const addLines = (newLines, type) => { type = type || "response"; setLines((prev) => [...prev, ...newLines.map((text) => ({ type, text }))]); };
-
-  const startGame = (profileKey) => {
-    const gen = PROFILES[profileKey].levels();
-    setProfile(profileKey); setLevels(gen); setLevelIdx(0); setHintsUsed(0); setStartTime(Date.now());
-    setLines([
-      { type: "system", text: "══════ NIVEAU 1/" + gen.length + " : " + gen[0].title + " ══════" },
-      { type: "system", text: "🐧 " + gen[0].topic },
-      { type: "mission", text: gen[0].mission },
-      { type: "empty", text: "" },
-    ]);
-    setScreen("game");
-  };
-
-  const advanceLevel = () => {
-    if (levelIdx < levels.length - 1) {
-      const next = levelIdx + 1; setLevelIdx(next);
-      setTimeout(() => { addLines(["", "══════ NIVEAU " + (next + 1) + "/" + levels.length + " : " + levels[next].title + " ══════", "🐧 " + levels[next].topic], "system"); addLines([levels[next].mission], "mission"); addLines([""], "empty"); }, 800);
-    } else { setTimeout(() => setScreen("victory"), 1000); }
-  };
-
-  const handleCommand = (cmd) => {
-    const original = cmd.trim(); const trimmed = original.toLowerCase(); if (!trimmed) return;
-    setLines((prev) => [...prev, { type: "input", text: "user@srv:~$ " + original }]);
-    if (trimmed === "clear") { setLines([]); return; }
-    if (trimmed === "mission") { addLines([levels[levelIdx].mission], "mission"); return; }
-    if (trimmed === "hint") { setHintsUsed((h) => h + 1); addLines(["💡 " + levels[levelIdx].hint], "hint"); return; }
-    if (trimmed === "score") { const e = Math.floor((Date.now() - startTime) / 1000); addLines(["Niveau: " + (levelIdx + 1) + "/" + levels.length + " | Hints: " + hintsUsed + " | Temps: " + Math.floor(e / 60) + "m" + String(e % 60).padStart(2, "0") + "s"], "system"); return; }
-
-    const cl = levels[levelIdx];
-    if (cl.checkWin && cl.checkWin(trimmed)) { if (cl.winResponse) addLines(cl.winResponse, "success"); advanceLevel(); return; }
-    if (cl.commands[trimmed]) { const r = cl.commands[trimmed]; addLines(r.response, "response"); return; }
-    if (cl.defaultResponse) { const r = cl.defaultResponse(trimmed); if (r) { addLines(r, "response"); return; } }
-    addLines(["bash: " + original.split(" ")[0] + ": commande non reconnue. Tapez 'help'."], "error");
-  };
-
-  const handleKeyDown = (e) => { if (e.key === "Enter") { handleCommand(input); setInput(""); } };
-  const focusInput = () => { if (inputRef.current) inputRef.current.focus(); };
-  const getScore = () => { const e = Math.floor((Date.now() - startTime) / 1000); const base = { "débutant": 500, "intermédiaire": 750, "expert": 1000 }[profile] || 500; return Math.max(0, base - hintsUsed * 50 - Math.floor(e / 15)); };
-
-  if (screen === "menu") {
-    return (
-      <div style={{ minHeight: "100vh", background: "#0a0f0a", fontFamily: "'Fira Code','Cascadia Code',monospace", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-        <TermRain />
-        <div style={{ zIndex: 10, textAlign: "center", maxWidth: "700px", padding: "20px" }}>
-          <div style={{ color: "#84cc1666", fontSize: "11px", letterSpacing: "8px", marginBottom: "16px" }}>ÉCOLE IT VALENCIENNES</div>
-          <h1 style={{ color: "#84cc16", fontSize: "36px", margin: "0 0 6px", textShadow: "0 0 30px rgba(132,204,22,0.4)", letterSpacing: "4px" }}>LINUX TERMINAL</h1>
-          <div style={{ color: "#84cc1688", fontSize: "13px", letterSpacing: "5px", marginBottom: "40px" }}>MAÎTRISEZ LE SHELL</div>
-          <div style={{ marginBottom: "30px" }}>
-            <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Votre pseudo (optionnel)" maxLength={20}
-              style={{ background: "rgba(132,204,22,0.05)", border: "1px solid #1a3a0a", color: "#84cc16", padding: "10px 16px", fontSize: "14px", fontFamily: "inherit", textAlign: "center", borderRadius: "4px", outline: "none", width: "250px" }}
-              onFocus={(e) => { e.target.style.borderColor = "#84cc16"; }} onBlur={(e) => { e.target.style.borderColor = "#1a3a0a"; }} />
-          </div>
-          <div style={{ color: "#888", fontSize: "13px", marginBottom: "24px", letterSpacing: "2px" }}>CHOISISSEZ VOTRE NIVEAU</div>
-          <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-            {Object.entries(PROFILES).map(([key, p]) => (
-              <button key={key} onClick={() => startGame(key)}
-                style={{ background: "rgba(10,15,10,0.8)", border: "1px solid " + p.color + "33", color: p.color, padding: "20px 24px", fontFamily: "inherit", fontSize: "13px", cursor: "pointer", borderRadius: "4px", width: "200px", textAlign: "left", transition: "all 0.3s", boxShadow: "0 0 20px " + p.color + "11" }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = p.color; e.currentTarget.style.boxShadow = "0 0 30px " + p.color + "33"; }}
-                onMouseOut={(e) => { e.currentTarget.style.borderColor = p.color + "33"; e.currentTarget.style.boxShadow = "0 0 20px " + p.color + "11"; }}>
-                <div style={{ fontSize: "16px", marginBottom: "8px", fontWeight: "bold" }}>{p.label}</div>
-                <div style={{ color: "#888", fontSize: "11px", lineHeight: "1.5" }}>{p.desc}</div>
-                <div style={{ color: "#555", fontSize: "10px", marginTop: "8px" }}>{p.levels().length} niveaux</div>
-              </button>
-            ))}
-          </div>
-          {leaderboard.length > 0 && (<div style={{ marginTop: "40px", maxWidth: "400px", margin: "40px auto 0" }}><div style={{ color: "#84cc16", fontSize: "12px", letterSpacing: "2px", marginBottom: "12px" }}>🏆 LEADERBOARD</div>{leaderboard.slice(0, 8).map((e, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", color: i === 0 ? "#84cc16" : "#666", fontSize: "12px", padding: "4px 0", borderBottom: "1px solid #111" }}><span>{i + 1}. {e.name}</span><span>{e.score} pts</span></div>))}</div>)}
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === "victory") {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000); const score = getScore(); const p = PROFILES[profile];
-    return (
-      <div style={{ minHeight: "100vh", background: "#0a0f0a", fontFamily: "'Fira Code',monospace", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-        <TermRain />
-        <div style={{ zIndex: 10, textAlign: "center", padding: "50px", border: "1px solid " + p.color + "44", borderRadius: "8px", background: "rgba(10,15,10,0.9)", boxShadow: "0 0 60px " + p.color + "15" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>🏆</div>
-          <h1 style={{ color: p.color, fontSize: "26px", margin: "0 0 6px", letterSpacing: "4px" }}>SYSADMIN MASTER</h1>
-          <div style={{ color: "#555", fontSize: "12px", letterSpacing: "3px", marginBottom: "30px" }}>{p.label}</div>
-          <div style={{ color: "#888", marginBottom: "30px", lineHeight: "2.2", fontSize: "14px" }}>
-            <div>Niveaux : <span style={{ color: p.color }}>{levels.length}/{levels.length}</span></div>
-            <div>Temps : <span style={{ color: p.color }}>{Math.floor(elapsed / 60)}m {String(elapsed % 60).padStart(2, "0")}s</span></div>
-            <div>Indices : <span style={{ color: hintsUsed === 0 ? "#4ade80" : "#facc15" }}>{hintsUsed}</span></div>
-            <div style={{ fontSize: "22px", marginTop: "8px" }}>Score : <span style={{ color: p.color }}>{score}</span></div>
-          </div>
-          <div style={{ color: "#475569", fontSize: "11px", marginBottom: "24px", maxWidth: "380px", lineHeight: "1.6" }}>{levels.map((l) => l.topic).join(" · ")}</div>
-          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => { setLeaderboard((prev) => [...prev, { name: playerName || "Anonyme", score, profile: p.label }].sort((a, b) => b.score - a.score)); setScreen("menu"); }} style={{ background: p.color, color: "#0a0f0a", border: "none", padding: "12px 28px", fontFamily: "inherit", fontSize: "13px", fontWeight: "bold", cursor: "pointer", letterSpacing: "2px", borderRadius: "3px" }}>SAUVER & MENU</button>
-            <button onClick={() => startGame(profile)} style={{ background: "transparent", color: p.color, border: "1px solid " + p.color, padding: "12px 28px", fontFamily: "inherit", fontSize: "13px", cursor: "pointer", letterSpacing: "2px", borderRadius: "3px" }}>REJOUER</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const p = PROFILES[profile];
-  return (
-    <div style={{ minHeight: "100vh", background: "#0a0f0a", fontFamily: "'Fira Code',monospace", display: "flex", flexDirection: "column", position: "relative" }} onClick={focusInput}>
-      <div style={{ background: "#0f150f", borderBottom: "1px solid #1a2a1a", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <span style={{ color: "#84cc16", fontSize: "13px", fontWeight: "bold" }}>🐧 LINUX TERMINAL</span>
-          <span style={{ color: "#1a2a1a" }}>|</span>
-          <span style={{ color: p.color, fontSize: "11px" }}>{p.label}</span>
-          <span style={{ color: "#1a2a1a" }}>|</span>
-          <span style={{ color: "#4ade80", fontSize: "11px" }}>{levels[levelIdx]?.title}</span>
-        </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          {playerName && <span style={{ color: "#555", fontSize: "11px" }}>{playerName}</span>}
-          <span style={{ color: "#555", fontSize: "11px" }}>LVL {levelIdx + 1}/{levels.length}</span>
-          <div style={{ display: "flex", gap: "3px" }}>
-            {levels.map((_, i) => (<div key={i} style={{ width: "7px", height: "7px", borderRadius: "50%", background: i < levelIdx ? "#4ade80" : i === levelIdx ? p.color : "#1a2a1a", boxShadow: i < levelIdx ? "0 0 4px #4ade80" : i === levelIdx ? "0 0 6px " + p.color : "none" }} />))}
-          </div>
-          <button onClick={() => setScreen("menu")} style={{ background: "none", border: "1px solid #1a2a1a", color: "#555", padding: "2px 8px", fontFamily: "inherit", fontSize: "10px", cursor: "pointer", borderRadius: "2px" }}>MENU</button>
-        </div>
-      </div>
-      <div ref={termRef} style={{ flex: 1, overflowY: "auto", padding: "14px 16px", paddingBottom: "65px" }}>
-        {lines.map((line, i) => {
-          if (line.type === "empty") return <div key={i} style={{ height: "10px" }} />;
-          const colors = { system: "#84cc16", input: "#e2e8f0", success: "#4ade80", error: "#f87171", hint: "#facc15", mission: "#94a3b8", response: "#7a9a78" };
-          return <div key={i} style={{ color: colors[line.type] || "#7a9a78", fontSize: "13px", lineHeight: "1.7", whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{line.text}</div>;
-        })}
-      </div>
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0f150f", borderTop: "1px solid #1a2a1a", padding: "10px 16px", display: "flex", alignItems: "center", gap: "8px", zIndex: 10 }}>
-        <span style={{ color: "#84cc16", fontSize: "13px", fontWeight: "bold" }}>user@srv:~$</span>
-        <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} autoFocus placeholder="Tapez votre commande..."
-          style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#e2e8f0", fontSize: "14px", fontFamily: "inherit", caretColor: "#84cc16" }} />
-        <span style={{ color: "#1a2a1a", fontSize: "10px" }}>ENTER ↵</span>
-      </div>
-    </div>
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<LinuxGame />);
+var root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(GameEngine, {
+  title: "LINUX TERMINAL",
+  icon: "🐧",
+  profiles: PROFILES,
+  rainConfig: { chars: "$ sudo apt chmod grep find ls cd cat rm cp mv mkdir df du ps kill top ssh scp rsync cron bash /etc /var /home root user", colors: ["#84cc16", "#a3e635", "#bef264", "#d9f99d"], fontSize: 14, speed: 55, opacity: 0.12, fadeAlpha: 0.04 },
+  backgroundColor: "#0a0f0a",
+  headerBg: "#0f150f",
+  headerBorder: "#1a2a1a",
+  themeColor: "#84cc16",
+  terminalColors: { system: "#84cc16", input: "#e2e8f0", success: "#4ade80", error: "#f87171", hint: "#facc15", mission: "#94a3b8", response: "#7a9a78" },
+  promptSymbol: "user@srv:~$",
+  inputPlaceholder: "Tapez votre commande...",
+  subtitleText: "MAÎTRISEZ LE SHELL",
+  victoryTitle: "SYSADMIN MASTER",
+  baseScores: { "débutant": 500, "intermédiaire": 750, "expert": 1000 },
+  getInputPrefix: function (original) { return "user@srv:~$ " + original; },
+  getUnknownMsg: function (original) { return "bash: " + original.split(" ")[0] + ": commande non reconnue. Tapez 'help'."; },
+  topicIcon: "🐧"
+}));
 
     </script>
 </body>
