@@ -9,6 +9,8 @@
     <script src="shared/utils.js"></script>
     <script src="shared/rain.js"></script>
     <script src="shared/game-engine.js"></script>
+    <script src="shared/level-builders.js"></script>
+    <script src="data/linux-levels.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #root { height: 100%; width: 100%; }
@@ -19,262 +21,22 @@
 
     <script>
 
-// ═══════════════════════════════════════════════
-// LEVEL GENERATORS
-// ═══════════════════════════════════════════════
-
-var generateNavigationLevel = function () {
-  var s = pick([
-    { q: "Vous êtes dans /home/user. Affichez le contenu du répertoire courant.", a: function (cmd) { return /^ls(\s|$)/i.test(cmd); }, win: "✓ ls affiche les fichiers et dossiers ! Options utiles : ls -la (détaillé + cachés), ls -lh (tailles lisibles).", hint: "La commande la plus basique pour lister les fichiers..." },
-    { q: "Déplacez-vous dans le répertoire /var/log.", a: function (cmd) { return /^cd\s+\/var\/log\s*$/i.test(cmd); }, win: "✓ cd /var/log — Vous êtes dans le répertoire des logs système !", hint: "cd = change directory" },
-    { q: "Affichez le chemin du répertoire où vous vous trouvez actuellement.", a: function (cmd) { return /^pwd\s*$/i.test(cmd); }, win: "✓ pwd (Print Working Directory) → /home/user. Toujours savoir où on est !", hint: "3 lettres, signifie 'Print Working Directory'" },
-  ]);
-  return {
-    id: "nav", title: "NAVIGATION FILESYSTEM",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande Linux appropriée.",
-    hint: s.hint, topic: "Navigation & Filesystem",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande Linux               ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours navigation          ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 NAVIGATION LINUX", "━━━━━━━━━━━━━━━━━━━━", "pwd — Afficher le répertoire courant", "ls — Lister les fichiers", "  ls -l  (détaillé)", "  ls -a  (fichiers cachés)", "  ls -la (les deux)", "cd — Changer de répertoire", "  cd /chemin/absolu", "  cd dossier    (relatif)", "  cd ..         (parent)", "  cd ~          (home)", "  cd -          (précédent)", "", "Chemins spéciaux :", "  /     racine", "  ~     home de l'utilisateur", "  .     répertoire courant", "  ..    répertoire parent"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function () { return null; },
-  };
-};
-
-var generateFileOpsLevel = function () {
-  var s = pick([
-    { q: "Créez un fichier vide appelé 'rapport.txt'.", a: function (cmd) { return /^touch\s+rapport\.txt\s*$/i.test(cmd); }, win: "✓ touch rapport.txt — Fichier créé ! touch met aussi à jour le timestamp si le fichier existe.", hint: "La commande pour créer un fichier vide commence par 'touch'" },
-    { q: "Copiez le fichier 'config.ini' vers 'config.ini.bak' (backup).", a: function (cmd) { return /^cp\s+config\.ini\s+config\.ini\.bak\s*$/i.test(cmd); }, win: "✓ cp config.ini config.ini.bak — Toujours faire un backup avant de modifier un fichier de config !", hint: "cp = copy. Syntaxe : cp source destination" },
-    { q: "Affichez le contenu du fichier '/etc/hostname'.", a: function (cmd) { return /^cat\s+\/etc\/hostname\s*$/i.test(cmd); }, win: "✓ cat /etc/hostname → 'srv-web-01'. cat concatène et affiche le contenu des fichiers.", hint: "cat = concatenate. Affiche le contenu d'un fichier." },
-  ]);
-  return {
-    id: "fileops", title: "OPÉRATIONS FICHIERS",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande Linux appropriée.",
-    hint: s.hint, topic: "Fichiers & Répertoires",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande Linux               ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours fichiers            ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 OPÉRATIONS SUR FICHIERS", "━━━━━━━━━━━━━━━━━━━━━━━━━━", "cat fichier — Afficher le contenu", "less fichier — Naviguer dans le contenu", "head -n 10 fichier — 10 premières lignes", "tail -n 10 fichier — 10 dernières lignes", "touch fichier — Créer un fichier vide", "cp source dest — Copier", "mv source dest — Déplacer / Renommer", "rm fichier — Supprimer (ATTENTION !)", "  rm -r dossier — Supprimer récursivement", "  rm -rf — Force sans confirmation", "mkdir dossier — Créer un répertoire", "  mkdir -p a/b/c — Créer l'arborescence"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function () { return null; },
-  };
-};
-
-var generatePermissionsLevel = function () {
-  var perms = pick([
-    { display: "-rw-r--r--", owner: "alice", group: "dev", file: "secret.conf", q: "Le fichier 'secret.conf' a les permissions : -rw-r--r-- (alice:dev).\nRendez-le lisible et exécutable UNIQUEMENT par le propriétaire (aucun droit pour les autres).", a: function (cmd) { return /^chmod\s+(700|u=rwx,go=|u=rwx,g=,o=)\s+secret\.conf/i.test(cmd); }, win: "✓ chmod 700 secret.conf — Seule Alice peut lire, écrire et exécuter !", hint: "chmod 700 ou chmod u=rwx,go= ..." },
-    { display: "-rwxrwxrwx", owner: "root", group: "root", file: "deploy.sh", q: "Le script 'deploy.sh' a les permissions -rwxrwxrwx (root:root).\nC'est DANGEREUX ! Restreignez à : propriétaire rwx, groupe rx, autres rien.", a: function (cmd) { return /^chmod\s+(750|u=rwx,g=rx,o=)\s+deploy\.sh/i.test(cmd); }, win: "✓ chmod 750 deploy.sh — Principe du moindre privilège appliqué !", hint: "rwx=7, rx=5, rien=0. Donc 7-5-0..." },
-  ]);
-  return {
-    id: "perms", title: "PERMISSIONS",
-    mission: "📋 MISSION :\n" + perms.q + "\n\nTapez la commande chmod appropriée.",
-    hint: perms.hint, topic: "Permissions & Sécurité",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande chmod               ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours permissions         ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 PERMISSIONS LINUX", "━━━━━━━━━━━━━━━━━━━━", "Format : -rwxrwxrwx = type|owner|group|others", "  r=4 (read) w=2 (write) x=1 (execute)", "", "Notation octale :", "  7 = rwx  6 = rw-  5 = r-x  4 = r--", "  3 = -wx  2 = -w-  1 = --x  0 = ---", "", "chmod 755 file → rwxr-xr-x", "chmod 644 file → rw-r--r--", "chmod 700 file → rwx------", "", "chown user:group file — Changer le propriétaire", "chgrp group file — Changer le groupe", "", "Principe du moindre privilège :", "  Donner le MINIMUM de droits nécessaires."] },
-    },
-    checkWin: function (input) { return perms.a(input); },
-    winResponse: [perms.win],
-    defaultResponse: function (input) {
-      if (/^chmod/i.test(input)) return ["✗ Vérifiez les valeurs octales ou symboliques.", "  Tapez 'hint' pour un indice."];
-      return null;
-    },
-  };
-};
-
-var generateGrepLevel = function () {
-  var s = pick([
-    { q: "Le fichier '/var/log/auth.log' contient des milliers de lignes.\nRecherchez toutes les lignes contenant 'Failed password'.", a: function (cmd) { return /^grep\s+['"]?failed\s*password['"]?\s+\/var\/log\/auth\.log/i.test(cmd); }, win: "✓ grep 'Failed password' /var/log/auth.log — 47 tentatives échouées trouvées ! Possible brute force ?", hint: "grep 'motif' fichier" },
-    { q: "Comptez le nombre de lignes contenant 'ERROR' dans le fichier 'app.log'.", a: function (cmd) { return /^grep\s+-c\s+['"]?error['"]?\s+app\.log/i.test(cmd) || /^grep\s+['"]?error['"]?\s+app\.log\s*\|\s*wc\s+-l/i.test(cmd); }, win: "✓ grep -c 'ERROR' app.log → 156 erreurs. L'option -c compte les occurrences !", hint: "grep -c pour compter, ou grep ... | wc -l" },
-  ]);
-  return {
-    id: "grep", title: "GREP & RECHERCHE",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
-    hint: s.hint, topic: "Grep, Pipes & Filtres",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande grep                ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours grep & pipes        ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 GREP & PIPES", "━━━━━━━━━━━━━━━━", "grep 'motif' fichier — Rechercher un texte", "  -i  insensible à la casse", "  -r  récursif (dans les sous-dossiers)", "  -c  compter les occurrences", "  -n  afficher les numéros de ligne", "  -v  inverser (lignes qui NE contiennent PAS)", "", "Pipes (|) — Chaîner des commandes :", "  cat fichier | grep 'erreur' | wc -l", "  ps aux | grep nginx", "  ls -la | sort -k5 -n | tail -5", "", "Autres filtres :", "  sort — trier", "  uniq — dédupliquer", "  wc -l — compter les lignes", "  cut -d: -f1 — extraire des colonnes", "  awk '{print $1}' — traitement avancé"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function (input) {
-      if (/^grep/i.test(input)) return ["✗ Vérifiez la syntaxe grep et les options.", "  Tapez 'hint' pour un indice."];
-      return null;
-    },
-  };
-};
-
-var generateProcessLevel = function () {
-  var s = pick([
-    { q: "Un processus 'node' consomme 98% du CPU. Son PID est 4287.\nTuez ce processus immédiatement.", a: function (cmd) { return /^kill\s+(-9\s+)?4287\s*$/i.test(cmd) || /^kill\s+-SIGKILL\s+4287/i.test(cmd); }, win: "✓ kill -9 4287 — Processus terminé ! Le signal 9 (SIGKILL) force l'arrêt immédiat.", hint: "kill -9 <PID> pour forcer l'arrêt" },
-    { q: "Affichez la liste des processus en cours avec leur consommation CPU/RAM.", a: function (cmd) { return /^(top|htop|ps\s+aux)\s*$/i.test(cmd); }, win: "✓ Bien joué ! ps aux / top / htop — Les outils essentiels de monitoring.", hint: "ps aux, top ou htop — commandes de monitoring" },
-  ]);
-  return {
-    id: "process", title: "GESTION DES PROCESSUS",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
-    hint: s.hint, topic: "Processus & Monitoring",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours processus           ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 GESTION DES PROCESSUS", "━━━━━━━━━━━━━━━━━━━━━━━━", "ps — Snapshot des processus", "  ps aux — Tous les processus (détaillé)", "  ps -ef — Format complet", "", "top / htop — Monitoring en temps réel", "  Trier par CPU, RAM, etc.", "", "kill — Envoyer un signal", "  kill PID — SIGTERM (arrêt propre)", "  kill -9 PID — SIGKILL (arrêt forcé)", "  kill -HUP PID — Recharger la config", "", "Autres :", "  bg/fg — Arrière-plan / premier plan", "  nohup cmd & — Survive à la déconnexion", "  systemctl status/start/stop service"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function () { return null; },
-  };
-};
-
-var generateUserLevel = function () {
-  var s = pick([
-    { q: "Créez un nouvel utilisateur 'stagiaire' sur le système.", a: function (cmd) { return /^(sudo\s+)?(useradd|adduser)\s+stagiaire/i.test(cmd); }, win: "✓ useradd stagiaire — Utilisateur créé ! N'oubliez pas de définir un mot de passe avec passwd.", hint: "useradd ou adduser + le nom" },
-    { q: "Ajoutez l'utilisateur 'dev01' au groupe 'docker'.", a: function (cmd) { return /^(sudo\s+)?usermod\s+(-aG|--append\s+--groups)\s+docker\s+dev01/i.test(cmd); }, win: "✓ usermod -aG docker dev01 — L'option -aG AJOUTE le groupe sans supprimer les autres !", hint: "usermod -aG <groupe> <utilisateur>" },
-  ]);
-  return {
-    id: "users", title: "GESTION DES UTILISATEURS",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
-    hint: s.hint, topic: "Utilisateurs & Groupes",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours utilisateurs        ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 UTILISATEURS & GROUPES", "━━━━━━━━━━━━━━━━━━━━━━━━━━", "useradd user — Créer un utilisateur", "userdel user — Supprimer", "passwd user — Définir le mot de passe", "usermod -aG group user — Ajouter au groupe", "  ⚠ -a = append (IMPORTANT, sinon écrase !)", "", "groups user — Voir les groupes d'un user", "id user — Voir UID, GID, groupes", "", "Fichiers clés :", "  /etc/passwd — Liste des utilisateurs", "  /etc/shadow — Mots de passe hashés", "  /etc/group — Liste des groupes", "", "sudo — Exécuter en tant que root", "  sudo commande", "  sudo -u user commande — En tant qu'un autre user"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function () { return null; },
-  };
-};
-
-var generateDiskLevel = function () {
-  var s = pick([
-    { q: "Affichez l'espace disque utilisé sur toutes les partitions montées.", a: function (cmd) { return /^df\s+(-h)?\s*$/i.test(cmd); }, win: "✓ df -h — Disk Free ! Le -h rend les tailles lisibles (Go, Mo). /dev/sda1 : 78% utilisé.", hint: "df = Disk Free. Ajoutez -h pour des tailles lisibles." },
-    { q: "Trouvez les 5 plus gros fichiers dans /var/log.", a: function (cmd) { return /^(du|find|ls)/i.test(cmd) && /(sort|head|tail)/i.test(cmd); }, win: "✓ du -sh /var/log/* | sort -rh | head -5 — syslog fait 2.3Go, time to rotate !", hint: "du pour la taille + sort + head pour le top 5" },
-  ]);
-  return {
-    id: "disk", title: "ESPACE DISQUE",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
-    hint: s.hint, topic: "Stockage & Disques",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours disque              ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 GESTION DU STOCKAGE", "━━━━━━━━━━━━━━━━━━━━━━━", "df -h — Espace libre par partition", "du -sh dossier — Taille d'un dossier", "du -sh * | sort -rh | head -10 — Top 10", "", "lsblk — Liste des disques/partitions", "mount — Monter un disque", "umount — Démonter", "fdisk -l — Info partitions", "", "Nettoyage :", "  journalctl --vacuum-size=100M", "  apt clean / apt autoremove", "  find /tmp -mtime +30 -delete", "", "⚠ Un disque plein = serveur en panne !"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function () { return null; },
-  };
-};
-
-var generateCronLevel = function () {
-  var s = {
-    q: "Vous devez planifier un backup automatique : exécuter '/scripts/backup.sh' tous les jours à 2h du matin.\n\nÉcrivez la ligne crontab correspondante.",
-    a: function (cmd) { return /^0\s+2\s+\*\s+\*\s+\*\s+\/scripts\/backup\.sh\s*$/i.test(cmd); },
-    win: "✓ 0 2 * * * /scripts/backup.sh — Backup planifié à 02:00 chaque jour !",
-    hint: "Format cron : minute heure jour mois jour_semaine commande. 2h du matin = 0 2 * * *",
-  };
-  return {
-    id: "cron", title: "CRON & AUTOMATISATION",
-    mission: "📋 MISSION :\n" + s.q,
-    hint: s.hint, topic: "Crontab & Scheduling",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre ligne crontab                ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours crontab             ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 CRONTAB", "━━━━━━━━━━", "Format : min heure jour mois jour_sem commande", "  ┌───── minute (0-59)", "  │ ┌───── heure (0-23)", "  │ │ ┌───── jour du mois (1-31)", "  │ │ │ ┌───── mois (1-12)", "  │ │ │ │ ┌───── jour semaine (0-7, 0/7=dim)", "  │ │ │ │ │", "  * * * * * commande", "", "Exemples :", "  0 2 * * * → Tous les jours à 2h", "  */15 * * * * → Toutes les 15 minutes", "  0 0 1 * * → 1er de chaque mois", "  0 9 * * 1-5 → Lun-Ven à 9h", "", "crontab -e — Éditer", "crontab -l — Lister"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function (input) {
-      if (/^\d/.test(input) || /^\*/.test(input)) return ["✗ Vérifiez le format : minute heure jour mois jour_semaine commande", "  Tapez 'hint' pour un indice."];
-      return null;
-    },
-  };
-};
-
-var generateNetworkLinuxLevel = function () {
-  var s = pick([
-    { q: "Affichez toutes les interfaces réseau et leurs adresses IP.", a: function (cmd) { return /^(ip\s+a(ddr)?|ifconfig)\s*$/i.test(cmd); }, win: "✓ ip a — eth0: 192.168.1.42/24, lo: 127.0.0.1. ip a remplace ifconfig sur les systèmes modernes.", hint: "ip a (ou ifconfig sur les anciens systèmes)" },
-    { q: "Vérifiez quels ports sont en écoute sur le serveur.", a: function (cmd) { return /^(ss\s+-tlnp|netstat\s+-tlnp|ss\s+-tunlp|netstat\s+-tunlp)/i.test(cmd); }, win: "✓ ss -tlnp — Port 22 (SSH), 80 (Nginx), 3306 (MySQL) en écoute. Tout est normal.", hint: "ss -tlnp ou netstat -tlnp — t=TCP, l=listening, n=numeric, p=process" },
-  ]);
-  return {
-    id: "netlinux", title: "RÉSEAU LINUX",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
-    hint: s.hint, topic: "Configuration Réseau",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande                     ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours réseau Linux        ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 RÉSEAU LINUX", "━━━━━━━━━━━━━━━━", "ip a — Interfaces & adresses IP", "ip route — Table de routage", "ss -tlnp — Ports en écoute (remplace netstat)", "ping host — Test de connectivité", "traceroute host — Chemin réseau", "dig/nslookup — Résolution DNS", "curl URL — Requête HTTP", "wget URL — Télécharger un fichier", "", "Fichiers config :", "  /etc/hosts — DNS local", "  /etc/resolv.conf — Serveurs DNS", "  /etc/network/interfaces — Config réseau (Debian)", "  /etc/netplan/ — Config réseau (Ubuntu récent)"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function () { return null; },
-  };
-};
-
-var generateServiceLevel = function () {
-  var s = pick([
-    { q: "Le service 'nginx' ne répond plus. Redémarrez-le.", a: function (cmd) { return /^(sudo\s+)?systemctl\s+restart\s+nginx/i.test(cmd); }, win: "✓ systemctl restart nginx — Service redémarré ! Vérifiez avec systemctl status nginx.", hint: "systemctl restart <service>" },
-    { q: "Configurez le service 'docker' pour qu'il démarre automatiquement au boot.", a: function (cmd) { return /^(sudo\s+)?systemctl\s+enable\s+docker/i.test(cmd); }, win: "✓ systemctl enable docker — Docker démarrera automatiquement à chaque reboot !", hint: "systemctl enable <service> pour le démarrage automatique" },
-  ]);
-  return {
-    id: "service", title: "SERVICES & SYSTEMD",
-    mission: "📋 MISSION :\n" + s.q + "\n\nTapez la commande appropriée.",
-    hint: s.hint, topic: "Systemctl & Services",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande systemctl           ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours systemd             ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 SYSTEMD & SERVICES", "━━━━━━━━━━━━━━━━━━━━━━", "systemctl status service — État", "systemctl start service — Démarrer", "systemctl stop service — Arrêter", "systemctl restart service — Redémarrer", "systemctl enable service — Auto au boot", "systemctl disable service — Désactiver auto", "", "journalctl -u service — Logs du service", "journalctl -f — Suivre les logs en temps réel", "", "Services courants :", "  nginx, apache2 — Web", "  mysql, postgresql — BDD", "  ssh — Accès distant", "  docker — Conteneurs", "  cron — Tâches planifiées"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function (input) {
-      if (/^(sudo\s+)?systemctl/i.test(input)) return ["✗ Vérifiez l'action (start/stop/restart/enable).", "  Tapez 'hint' pour un indice."];
-      return null;
-    },
-  };
-};
-
-var generateShellScriptLevel = function () {
-  var s = {
-    q: "Complétez cette commande one-liner : trouver tous les fichiers .log de plus de 100Mo dans /var et les supprimer.\n\nTapez la commande 'find' appropriée.",
-    a: function (cmd) { return /^find\s+\/var\s+.*-name\s+['"]\*\.log['"]\s+.*-size\s+\+100M/i.test(cmd) && /-delete|xargs\s+rm|exec\s+rm/i.test(cmd); },
-    win: "✓ find /var -name '*.log' -size +100M -delete — 3 fichiers supprimés, 4.7Go libérés !",
-    hint: "find /var -name '*.log' -size +100M -delete",
-  };
-  return {
-    id: "shell", title: "FIND & ONE-LINERS",
-    mission: "📋 MISSION :\n" + s.q,
-    hint: s.hint, topic: "Shell Avancé",
-    commands: {
-      help: { response: ["╔═══════════════════════════════════════════╗", "║  Tapez votre commande find                ║", "║  hint    - Obtenir un indice              ║", "║  explain - Mini-cours find                ║", "║  mission - Revoir l'énoncé                ║", "╚═══════════════════════════════════════════╝"] },
-      explain: { response: ["📖 FIND — RECHERCHE AVANCÉE", "━━━━━━━━━━━━━━━━━━━━━━━━━━━", "find chemin [options] [action]", "", "Filtres :", "  -name '*.log' — Par nom (glob)", "  -type f/d — Fichier ou dossier", "  -size +100M — Plus de 100Mo", "  -mtime -7 — Modifié il y a <7 jours", "  -user alice — Appartenant à alice", "  -perm 777 — Permissions exactes", "", "Actions :", "  -print — Afficher (défaut)", "  -delete — Supprimer", "  -exec cmd {} \\; — Exécuter une commande", "  | xargs cmd — Passer en argument", "", "Exemple : find / -name '*.tmp' -mtime +30 -delete"] },
-    },
-    checkWin: function (input) { return s.a(input); },
-    winResponse: [s.win],
-    defaultResponse: function (input) {
-      if (/^find/i.test(input)) return ["✗ Vérifiez les options -name, -size et l'action -delete.", "  Tapez 'hint' pour un indice."];
-      return null;
-    },
-  };
-};
-
-// ═══════════════════════════════════════════════
-// PROFILES
-// ═══════════════════════════════════════════════
+var L = LINUX_LEVELS;
 
 var PROFILES = {
   "débutant": {
     label: "🟢 DÉBUTANT", desc: "Lycéen / Première fois sur Linux", color: "#84cc16",
-    levels: function () { return [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel()]; },
+    levels: function () { return [buildLevel(L.nav), buildLevel(L.fileops), buildLevel(L.perms), buildLevel(L.grep), buildLevel(L.process)]; },
   },
   "intermédiaire": {
     label: "🟡 INTERMÉDIAIRE", desc: "Étudiant IT / Bac+2", color: "#facc15",
-    levels: function () { return [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel(), generateUserLevel(), generateDiskLevel()]; },
+    levels: function () { return [buildLevel(L.nav), buildLevel(L.fileops), buildLevel(L.perms), buildLevel(L.grep), buildLevel(L.process), buildLevel(L.users), buildLevel(L.disk)]; },
   },
   "expert": {
     label: "🔴 EXPERT", desc: "M1/M2 / Sysadmin", color: "#f87171",
-    levels: function () { return [generateNavigationLevel(), generateFileOpsLevel(), generatePermissionsLevel(), generateGrepLevel(), generateProcessLevel(), generateUserLevel(), generateDiskLevel(), generateCronLevel(), generateNetworkLinuxLevel(), generateServiceLevel(), generateShellScriptLevel()]; },
+    levels: function () { return [buildLevel(L.nav), buildLevel(L.fileops), buildLevel(L.perms), buildLevel(L.grep), buildLevel(L.process), buildLevel(L.users), buildLevel(L.disk), buildLevel(L.cron), buildLevel(L.netlinux), buildLevel(L.service), buildLevel(L.shell)]; },
   },
 };
-
-// ═══════════════════════════════════════════════
-// RENDER
-// ═══════════════════════════════════════════════
 
 var root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(React.createElement(GameEngine, {

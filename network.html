@@ -231,6 +231,26 @@ function generateLevels() {
           nextLevel: true,
         },
       },
+      defaultResponse: (input) => {
+        if (input === "traceroute" || input === "ping") {
+          return ["✗ Usage : " + input + " <adresse_ip>", "  Exemple : " + input + " 8.8.8.8"];
+        }
+        if (input.startsWith("traceroute ")) {
+          const ip = input.slice(11).trim();
+          if (ip === "192.168.1.1") {
+            return ["traceroute to 192.168.1.1 :", "  1  192.168.1.1    1.1ms   ✓ (votre gateway)", "", "→ Le routeur local est joignable. Essayez traceroute 8.8.8.8"];
+          }
+          if (ip === "192.168.1.10") {
+            return ["traceroute to 192.168.1.10 :", "  1  192.168.1.10   0.8ms   ✓ (réseau local)", "", "→ Le serveur local est joignable. Le problème est plus loin. Essayez traceroute 8.8.8.8"];
+          }
+          return ["traceroute to " + ip + " :", "  1  192.168.1.1    1.2ms   ✓ (votre gateway)", "  2  * * *          ✗ TIMEOUT", "", "→ Pas de route vers " + ip + ". Essayez traceroute 8.8.8.8"];
+        }
+        if (input.startsWith("ping ")) {
+          const ip = input.slice(5).trim();
+          return ["PING " + ip + " :", "  Request timeout for icmp_seq 0", "  ✗ Hôte injoignable."];
+        }
+        return null;
+      },
     },
 
     // ─── LEVEL 2: SUBNETTING ───

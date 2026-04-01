@@ -9,6 +9,8 @@
     <script src="shared/utils.js"></script>
     <script src="shared/rain.js"></script>
     <script src="shared/game-engine.js"></script>
+    <script src="shared/level-builders.js"></script>
+    <script src="data/dev-levels.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #root { height: 100%; width: 100%; }
@@ -23,7 +25,6 @@
 const pyEval = (code) => {
   try {
     const trimmed = code.trim();
-    // Basic print detection
     const printMatch = trimmed.match(/^print\((.+)\)$/);
     if (printMatch) {
       const inner = printMatch[1];
@@ -34,7 +35,6 @@ const pyEval = (code) => {
         return { output: inner.replace(/^["']|["']$/g, ""), error: null };
       }
     }
-    // Direct expression
     const val = Function(`"use strict"; return (${trimmed})`)();
     return { output: String(val), error: null };
   } catch (e) {
@@ -43,632 +43,8 @@ const pyEval = (code) => {
 };
 
 // ═══════════════════════════════════════════════
-// LEVEL GENERATORS
+// CUSTOM LEVELS (logic too complex for data files)
 // ═══════════════════════════════════════════════
-
-const generateVariablesLevel = () => {
-  const challenges = [
-    { question: "Quel est le type de la valeur 42 ?", answer: "int", code: "type(42)", hint: "Les nombres entiers sont de type 'int' en Python." },
-    { question: "Quel est le type de la valeur 3.14 ?", answer: "float", code: "type(3.14)", hint: "Les nombres décimaux sont de type 'float'." },
-    { question: "Quel est le type de la valeur \"hello\" ?", answer: "str", code: 'type("hello")', hint: "Les chaînes de caractères entre guillemets sont de type 'str'." },
-    { question: "Quel est le type de la valeur True ?", answer: "bool", code: "type(True)", hint: "True et False sont de type 'bool' (booléen)." },
-    { question: "Quel est le type de la valeur [1, 2, 3] ?", answer: "list", code: "type([1,2,3])", hint: "Les crochets [] définissent une 'list'." },
-  ];
-  const ch = pick(challenges);
-
-  return {
-    id: "variables",
-    title: "VARIABLES & TYPES",
-    mission: `${ch.question} Répondez avec 'answer <type>'.`,
-    hint: ch.hint,
-    topic: "Variables & Types Python",
-    codeExample: ch.code,
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <type>   - Répondre à la question    ║",
-          "║  types           - Liste des types Python     ║",
-          "║  run <code>      - Exécuter du Python         ║",
-          "║  example         - Voir un exemple            ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      types: {
-        response: [
-          "📖 TYPES PYTHON PRINCIPAUX :",
-          "  int    → Entier        (42, -7, 0)",
-          "  float  → Décimal       (3.14, -0.5)",
-          "  str    → Chaîne        (\"hello\", 'world')",
-          "  bool   → Booléen       (True, False)",
-          "  list   → Liste         ([1, 2, 3])",
-          "  dict   → Dictionnaire  ({\"a\": 1})",
-          "  tuple  → Tuple         ((1, 2, 3))",
-          "  None   → Rien          (None)",
-        ],
-      },
-      example: {
-        response: [
-          ">>> x = 42",
-          ">>> type(x)",
-          "<class 'int'>",
-          "",
-          ">>> name = \"Python\"",
-          ">>> type(name)",
-          "<class 'str'>",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim().toLowerCase();
-        if (a === ch.answer) return null;
-        return [`✗ Incorrect. ${ch.code} ne retourne pas '${a}'.`];
-      }
-      if (input.startsWith("run ")) {
-        const code = input.slice(4);
-        const r = pyEval(code);
-        return r.error ? [`✗ Erreur: ${r.error}`] : [`>>> ${r.output}`];
-      }
-      return null;
-    },
-    checkWin: (input) => input.startsWith("answer ") && input.slice(7).trim().toLowerCase() === ch.answer,
-    winResponse: [
-      `✓ Correct ! ${ch.code} → <class '${ch.answer}'>`,
-      "",
-      "⚠ À RETENIR :",
-      "→ type() permet de vérifier le type d'une valeur.",
-      "→ Python est un langage à typage dynamique.",
-      "→ Les types déterminent les opérations possibles.",
-    ],
-  };
-};
-
-const generateConditionsLevel = (difficulty) => {
-  const challenges = {
-    "débutant": [
-      { desc: "Écrivez une condition : si x vaut 10, retourner 'oui', sinon 'non'. x = 10.", answer: "oui", variable: "x", value: 10, test: (v) => v === 10 ? "oui" : "non", hint: "if x == 10: → 'oui'. Tapez: answer oui" },
-      { desc: "x = 5. Est-ce que x > 3 AND x < 10 ? Répondez True ou False.", answer: "true", variable: "x", value: 5, test: (v) => v > 3 && v < 10, hint: "5 > 3 est True, 5 < 10 est True. True AND True = ?" },
-      { desc: "x = -3. Est-ce que x est positif (x > 0) ? True ou False.", answer: "false", variable: "x", value: -3, test: (v) => v > 0, hint: "-3 > 0 est False." },
-    ],
-    "intermédiaire": [
-      { desc: "x = 15. Que retourne 'pair' si x%2==0, 'impair' sinon ?", answer: "impair", variable: "x", value: 15, hint: "15 % 2 = 1, donc x n'est pas pair." },
-      { desc: "x = 0. Que vaut bool(x) en Python ?", answer: "false", variable: "x", value: 0, hint: "En Python, 0 est 'falsy' → bool(0) = False." },
-      { desc: "x = \"\". Que vaut bool(x) en Python ?", answer: "false", variable: "x", value: "", hint: "Une chaîne vide est 'falsy' → bool('') = False." },
-    ],
-    "expert": [
-      { desc: "Que retourne: True + True + False en Python ?", answer: "2", hint: "En Python, True=1 et False=0. Donc 1+1+0=2." },
-      { desc: "Que retourne: not not [] en Python ? (True/False)", answer: "false", hint: "[] est falsy → not [] = True → not True = False." },
-      { desc: "x=5. Que vaut: 'a' if x>3 else 'b' if x>7 else 'c' ?", answer: "a", hint: "x>3 est True, donc on retourne 'a' directement." },
-    ],
-  };
-
-  const ch = pick(challenges[difficulty]);
-
-  return {
-    id: "conditions",
-    title: "CONDITIONS & LOGIQUE",
-    mission: `${ch.desc} Répondez avec 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Conditions if/else, Booléens",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  run <code>      - Tester du Python           ║",
-          "║  explain         - Cours sur les conditions   ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 CONDITIONS EN PYTHON",
-          "━━━━━━━━━━━━━━━━━━━━━━━",
-          "if x > 0:",
-          "    print('positif')",
-          "elif x == 0:",
-          "    print('zéro')",
-          "else:",
-          "    print('négatif')",
-          "",
-          "Opérateurs : ==, !=, <, >, <=, >=",
-          "Logique : and, or, not",
-          "Falsy : 0, '', [], {}, None, False",
-          "Ternaire : 'a' if condition else 'b'",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim().toLowerCase();
-        if (a === ch.answer.toLowerCase()) return null;
-        return [`✗ Incorrect. Réessayez.`];
-      }
-      if (input.startsWith("run ")) {
-        const r = pyEval(input.slice(4));
-        return r.error ? [`✗ ${r.error}`] : [`>>> ${r.output}`];
-      }
-      return null;
-    },
-    checkWin: (input) => input.startsWith("answer ") && input.slice(7).trim().toLowerCase() === ch.answer.toLowerCase(),
-    winResponse: [
-      `✓ Correct ! La réponse est : ${ch.answer}`,
-      "",
-      "⚠ À RETENIR :",
-      "→ Python évalue les conditions de gauche à droite.",
-      "→ Les valeurs 'falsy' : 0, '', [], {}, None, False.",
-      "→ L'opérateur ternaire : valeur_si_vrai if condition else valeur_si_faux.",
-    ],
-  };
-};
-
-const generateLoopsLevel = (difficulty) => {
-  const challenges = {
-    "débutant": [
-      { desc: "Que fait range(5) ? Donnez la liste des nombres générés, séparés par des virgules.", answer: "0,1,2,3,4", hint: "range(5) génère les nombres de 0 à 4 (5 exclu)." },
-      { desc: "Combien de fois 'for i in range(3)' s'exécute ?", answer: "3", hint: "range(3) = [0, 1, 2] → 3 itérations." },
-      { desc: "for i in range(1, 4): print(i). Qu'affiche ce code ? (réponse: les nombres séparés par des virgules)", answer: "1,2,3", hint: "range(1, 4) commence à 1 et s'arrête avant 4." },
-    ],
-    "intermédiaire": [
-      { desc: "Que vaut sum(range(1, 6)) ?", answer: "15", hint: "range(1,6) = [1,2,3,4,5]. Somme = 15." },
-      { desc: "Que retourne [i**2 for i in range(4)] ?", answer: "[0,1,4,9]", normalize: (a) => a.replace(/\s/g, ""), hint: "0²=0, 1²=1, 2²=4, 3²=9." },
-      { desc: "Combien d'itérations : for i in range(0, 10, 3) ?", answer: "4", hint: "range(0,10,3) = [0,3,6,9] → 4 valeurs." },
-    ],
-    "expert": [
-      { desc: "Que retourne: list(zip([1,2,3], ['a','b','c']))[1] ?", answer: "(2,'b')", normalize: (a) => a.replace(/\s/g, "").replace(/"/g, "'"), hint: "zip crée des tuples. Index 1 = (2, 'b')." },
-      { desc: "Que vaut: [x for x in range(10) if x%3==0 and x>0] ?", answer: "[3,6,9]", normalize: (a) => a.replace(/\s/g, ""), hint: "Multiples de 3 dans [1..9] : 3, 6, 9." },
-      { desc: "Que retourne sum(1 for c in 'Hello World' if c.isupper()) ?", answer: "2", hint: "'H' et 'W' sont majuscules → 2." },
-    ],
-  };
-
-  const ch = pick(challenges[difficulty]);
-
-  return {
-    id: "loops",
-    title: "BOUCLES & ITÉRATIONS",
-    mission: `${ch.desc} Tapez 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Boucles for/while, range, comprehensions",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  run <code>      - Tester du Python           ║",
-          "║  explain         - Cours sur les boucles      ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 BOUCLES PYTHON",
-          "━━━━━━━━━━━━━━━━━",
-          "# For loop",
-          "for i in range(5):      # 0,1,2,3,4",
-          "    print(i)",
-          "",
-          "# While loop",
-          "while x > 0:",
-          "    x -= 1",
-          "",
-          "# List comprehension",
-          "[x**2 for x in range(5)]  # [0,1,4,9,16]",
-          "",
-          "# range(start, stop, step)",
-          "range(0, 10, 2)  # 0,2,4,6,8",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim();
-        const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-        const expected = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-        if (norm === expected) return null;
-        return [`✗ Incorrect. Réessayez.`];
-      }
-      if (input.startsWith("run ")) {
-        const r = pyEval(input.slice(4));
-        return r.error ? [`✗ ${r.error}`] : [`>>> ${r.output}`];
-      }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim();
-      const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-      const expected = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-      return norm === expected;
-    },
-    winResponse: [
-      `✓ Correct ! Réponse : ${ch.answer}`,
-      "",
-      "⚠ À RETENIR :",
-      "→ range(n) : de 0 à n-1.",
-      "→ range(start, stop, step) pour plus de contrôle.",
-      "→ Les list comprehensions sont plus 'pythoniques' que les boucles.",
-    ],
-  };
-};
-
-const generateListsLevel = (difficulty) => {
-  const challenges = {
-    "débutant": [
-      { desc: "lst = [10, 20, 30, 40]. Que vaut lst[2] ?", answer: "30", hint: "Les index commencent à 0 : lst[0]=10, lst[1]=20, lst[2]=30." },
-      { desc: "lst = [1, 2, 3]. Que vaut len(lst) ?", answer: "3", hint: "len() retourne le nombre d'éléments." },
-      { desc: "lst = [5, 3, 8, 1]. Que vaut sorted(lst) ? (format: [a,b,c,d])", answer: "[1,3,5,8]", normalize: (a) => a.replace(/\s/g, ""), hint: "sorted() trie par ordre croissant." },
-    ],
-    "intermédiaire": [
-      { desc: "lst = [1,2,3,4,5]. Que vaut lst[-2] ?", answer: "4", hint: "Index négatifs : -1=dernier, -2=avant-dernier." },
-      { desc: "lst = [1,2,3,4,5]. Que vaut lst[1:4] ? (format: [a,b,c])", answer: "[2,3,4]", normalize: (a) => a.replace(/\s/g, ""), hint: "Slicing : lst[start:stop] (stop exclu)." },
-      { desc: "'hello'[::-1] retourne quoi ?", answer: "olleh", hint: "[::-1] inverse une séquence." },
-    ],
-    "expert": [
-      { desc: "Que vaut: list(set([1,2,2,3,3,3])) trié ?", answer: "[1,2,3]", normalize: (a) => a.replace(/\s/g, ""), hint: "set() supprime les doublons." },
-      { desc: "Que retourne: dict(zip(['a','b'], [1,2])) ?", answer: "{'a':1,'b':2}", normalize: (a) => a.replace(/\s/g, "").replace(/"/g, "'"), hint: "zip + dict crée un dictionnaire." },
-      { desc: "lst=[1,[2,3],[4,[5,6]]]. Que vaut lst[2][1][0] ?", answer: "5", hint: "lst[2]=[4,[5,6]], [1]=[5,6], [0]=5." },
-    ],
-  };
-
-  const ch = pick(challenges[difficulty]);
-
-  return {
-    id: "lists",
-    title: "LISTES & STRUCTURES",
-    mission: `${ch.desc} Tapez 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Listes, Slicing, Méthodes",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  run <code>      - Tester du Python           ║",
-          "║  explain         - Cours sur les listes       ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 LISTES PYTHON",
-          "━━━━━━━━━━━━━━━━",
-          "lst = [1, 2, 3, 4, 5]",
-          "lst[0]     → 1        (premier)",
-          "lst[-1]    → 5        (dernier)",
-          "lst[1:3]   → [2, 3]   (slicing)",
-          "lst[::-1]  → [5,4,3,2,1] (inversé)",
-          "",
-          "Méthodes : append, insert, remove, pop, sort, reverse",
-          "Fonctions : len, sorted, min, max, sum",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim();
-        const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-        const expected = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-        if (norm === expected) return null;
-        return [`✗ Incorrect.`];
-      }
-      if (input.startsWith("run ")) { const r = pyEval(input.slice(4)); return r.error ? [`✗ ${r.error}`] : [`>>> ${r.output}`]; }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim();
-      const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-      const expected = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-      return norm === expected;
-    },
-    winResponse: [
-      `✓ Correct ! ${ch.answer}`,
-      "",
-      "⚠ À RETENIR :",
-      "→ Index à partir de 0, négatifs depuis la fin.",
-      "→ Slicing : lst[start:stop:step].",
-      "→ Les listes sont mutables, les tuples non.",
-    ],
-  };
-};
-
-const generateFunctionsLevel = (difficulty) => {
-  const challenges = {
-    "débutant": [
-      { desc: "Complétez : def carre(x): return ___. Que met-on à la place de ___ pour retourner x au carré ?", answer: "x**2", alt: ["x*x", "x ** 2", "x * x"], hint: "x au carré = x**2 ou x*x." },
-      { desc: "def add(a, b): return a + b. Que retourne add(3, 7) ?", answer: "10", hint: "3 + 7 = 10." },
-      { desc: "def greet(name): return 'Hello ' + name. Que retourne greet('Python') ?", answer: "hello python", normalize: (a) => a.toLowerCase().replace(/['"]/g, ""), hint: "'Hello ' + 'Python' = 'Hello Python'." },
-    ],
-    "intermédiaire": [
-      { desc: "def f(x, y=2): return x*y. Que retourne f(5) ?", answer: "10", hint: "y a une valeur par défaut de 2. f(5) = 5*2 = 10." },
-      { desc: "def f(*args): return sum(args). Que retourne f(1,2,3,4) ?", answer: "10", hint: "*args capture tous les arguments. sum(1,2,3,4) = 10." },
-      { desc: "Que retourne: (lambda x: x**3)(4) ?", answer: "64", hint: "Lambda x: x³. 4³ = 64." },
-    ],
-    "expert": [
-      { desc: "def f(n): return n * f(n-1) if n > 1 else 1. Que vaut f(5) ?", answer: "120", hint: "C'est la factorielle. 5! = 5×4×3×2×1 = 120." },
-      { desc: "Que retourne: list(map(lambda x: x**2, filter(lambda x: x%2==0, range(6)))) ?", answer: "[0,4,16]", normalize: (a) => a.replace(/\s/g, ""), hint: "Pairs dans range(6): 0,2,4. Carrés: 0,4,16." },
-      { desc: "def make_adder(n): return lambda x: x+n. f=make_adder(10). Que vaut f(5) ?", answer: "15", hint: "Closure : f = lambda x: x+10. f(5) = 15." },
-    ],
-  };
-
-  const ch = pick(challenges[difficulty]);
-
-  return {
-    id: "functions",
-    title: "FONCTIONS",
-    mission: `${ch.desc} Tapez 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Fonctions, Lambda, Récursion",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  run <code>      - Tester du Python           ║",
-          "║  explain         - Cours sur les fonctions    ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 FONCTIONS PYTHON",
-          "━━━━━━━━━━━━━━━━━━━",
-          "def nom_fonction(param1, param2='défaut'):",
-          "    '''Docstring'''",
-          "    return résultat",
-          "",
-          "# Lambda (fonction anonyme)",
-          "carre = lambda x: x**2",
-          "",
-          "# *args et **kwargs",
-          "def f(*args, **kwargs): ...",
-          "",
-          "# Récursion",
-          "def fact(n): return n*fact(n-1) if n>1 else 1",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim();
-        const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase().replace(/['"]/g, "");
-        const expected = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-        const alts = ch.alt ? ch.alt.map((x) => x.toLowerCase()) : [];
-        if (norm === expected || alts.includes(norm)) return null;
-        return [`✗ Incorrect.`];
-      }
-      if (input.startsWith("run ")) { const r = pyEval(input.slice(4)); return r.error ? [`✗ ${r.error}`] : [`>>> ${r.output}`]; }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim();
-      const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase().replace(/['"]/g, "");
-      const expected = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-      const alts = ch.alt ? ch.alt.map((x) => x.toLowerCase()) : [];
-      return norm === expected || alts.includes(norm);
-    },
-    winResponse: [
-      `✓ Correct ! ${ch.answer}`,
-      "",
-      "⚠ À RETENIR :",
-      "→ def pour définir, return pour retourner une valeur.",
-      "→ Les paramètres peuvent avoir des valeurs par défaut.",
-      "→ Lambda = fonction courte et anonyme.",
-    ],
-  };
-};
-
-const generateStringsLevel = () => {
-  const challenges = [
-    { desc: "'Python'[2:5] retourne quoi ?", answer: "tho", hint: "Index 2='t', 3='h', 4='o'. Stop exclu." },
-    { desc: "'hello world'.title() retourne quoi ?", answer: "hello world", normalize: (a) => a.replace(/['"]/g, ""), expected: "Hello World", hint: ".title() met chaque mot en majuscule." },
-    { desc: "'  spaces  '.strip() retourne quoi ?", answer: "spaces", normalize: (a) => a.replace(/['"]/g, "").trim(), hint: ".strip() supprime les espaces en début/fin." },
-    { desc: "'a-b-c'.split('-') retourne quoi ?", answer: "['a','b','c']", normalize: (a) => a.replace(/\s/g, "").replace(/"/g, "'"), hint: ".split('-') coupe la chaîne à chaque tiret." },
-    { desc: "'-'.join(['x','y','z']) retourne quoi ?", answer: "x-y-z", normalize: (a) => a.replace(/['"]/g, ""), hint: ".join() assemble avec le séparateur." },
-    { desc: "f'{3+4} est la réponse' retourne quoi ?", answer: "7 est la réponse", normalize: (a) => a.replace(/['"]/g, ""), hint: "f-string évalue les expressions entre {}." },
-  ];
-
-  const ch = pick(challenges);
-
-  return {
-    id: "strings",
-    title: "STRINGS & MÉTHODES",
-    mission: `${ch.desc} Tapez 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Chaînes de caractères, f-strings",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  run <code>      - Tester du Python           ║",
-          "║  explain         - Cours sur les strings      ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 STRINGS PYTHON",
-          "━━━━━━━━━━━━━━━━━",
-          "s = 'Hello World'",
-          "s.upper()      → 'HELLO WORLD'",
-          "s.lower()      → 'hello world'",
-          "s.title()      → 'Hello World'",
-          "s.strip()      → supprime espaces",
-          "s.split(' ')   → ['Hello', 'World']",
-          "s.replace('o','0') → 'Hell0 W0rld'",
-          "s[0:5]         → 'Hello'",
-          "f'{nom} a {age} ans'  → f-string",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim();
-        const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-        const exp = ch.normalize ? ch.normalize(ch.expected || ch.answer) : (ch.expected || ch.answer).toLowerCase();
-        if (norm === exp) return null;
-        return [`✗ Incorrect.`];
-      }
-      if (input.startsWith("run ")) { const r = pyEval(input.slice(4)); return r.error ? [`✗ ${r.error}`] : [`>>> ${r.output}`]; }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim();
-      const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-      const exp = ch.normalize ? ch.normalize(ch.expected || ch.answer) : (ch.expected || ch.answer).toLowerCase();
-      return norm === exp;
-    },
-    winResponse: [
-      `✓ Correct ! ${ch.expected || ch.answer}`,
-      "",
-      "⚠ À RETENIR :",
-      "→ Les strings sont immutables en Python.",
-      "→ Les méthodes retournent une nouvelle chaîne.",
-      "→ f-strings (f'...{expr}...') sont le format moderne.",
-    ],
-  };
-};
-
-const generateDictLevel = () => {
-  const challenges = [
-    { desc: "d = {'a': 1, 'b': 2, 'c': 3}. Que vaut d['b'] ?", answer: "2", hint: "d['b'] accède à la valeur associée à la clé 'b'." },
-    { desc: "d = {'x': 10, 'y': 20}. Que retourne list(d.keys()) ?", answer: "['x','y']", normalize: (a) => a.replace(/\s/g, "").replace(/"/g, "'"), hint: ".keys() retourne les clés du dictionnaire." },
-    { desc: "d = {'a': 1}. Que retourne d.get('z', 0) ?", answer: "0", hint: ".get(key, default) retourne default si la clé n'existe pas." },
-    { desc: "d = {'a': 1, 'b': 2}. Que vaut len(d) ?", answer: "2", hint: "len() compte le nombre de paires clé-valeur." },
-    { desc: "d = {1: 'a', 2: 'b'}. Que retourne list(d.values()) ?", answer: "['a','b']", normalize: (a) => a.replace(/\s/g, "").replace(/"/g, "'"), hint: ".values() retourne les valeurs." },
-  ];
-
-  const ch = pick(challenges);
-
-  return {
-    id: "dicts",
-    title: "DICTIONNAIRES",
-    mission: `${ch.desc} Tapez 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Dictionnaires, Méthodes",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  run <code>      - Tester du Python           ║",
-          "║  explain         - Cours sur les dicts        ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 DICTIONNAIRES PYTHON",
-          "━━━━━━━━━━━━━━━━━━━━━━━",
-          "d = {'clé': 'valeur', 'age': 25}",
-          "d['clé']        → 'valeur'",
-          "d.get('x', 0)   → 0 (valeur par défaut)",
-          "d.keys()        → les clés",
-          "d.values()      → les valeurs",
-          "d.items()       → paires (clé, valeur)",
-          "d.update({...}) → fusionner",
-          "'clé' in d      → True/False",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim();
-        const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-        const exp = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-        if (norm === exp) return null;
-        return [`✗ Incorrect.`];
-      }
-      if (input.startsWith("run ")) { const r = pyEval(input.slice(4)); return r.error ? [`✗ ${r.error}`] : [`>>> ${r.output}`]; }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim();
-      const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-      const exp = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-      return norm === exp;
-    },
-    winResponse: [`✓ Correct ! ${ch.answer}`, "", "⚠ À RETENIR :", "→ Les clés doivent être hashables (str, int, tuple).", "→ .get(key, default) évite les KeyError.", "→ Dict comprehension : {k: v for k, v in iterable}."],
-  };
-};
-
-const generateErrorsLevel = () => {
-  const challenges = [
-    { desc: "print(10 / 0) provoque quelle erreur ?", answer: "zerodivisionerror", hint: "Division par zéro → ZeroDivisionError." },
-    { desc: "int('abc') provoque quelle erreur ?", answer: "valueerror", hint: "Conversion impossible → ValueError." },
-    { desc: "lst = [1,2]; lst[5] provoque quelle erreur ?", answer: "indexerror", hint: "Index hors limites → IndexError." },
-    { desc: "d = {}; d['x'] provoque quelle erreur ?", answer: "keyerror", hint: "Clé inexistante → KeyError." },
-    { desc: "'hello' + 5 provoque quelle erreur ?", answer: "typeerror", hint: "Concaténation str + int impossible → TypeError." },
-    { desc: "import blabla provoque quelle erreur ?", answer: "modulenotfounderror", hint: "Module inexistant → ModuleNotFoundError." },
-  ];
-
-  const ch = pick(challenges);
-
-  return {
-    id: "errors",
-    title: "GESTION D'ERREURS",
-    mission: `${ch.desc} Tapez 'answer <NomErreur>'.`,
-    hint: ch.hint,
-    topic: "Exceptions, try/except",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <erreur>  - Répondre                  ║",
-          "║  errors           - Liste des erreurs Python  ║",
-          "║  explain          - Cours try/except          ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      errors: {
-        response: [
-          "📋 ERREURS PYTHON COURANTES :",
-          "  SyntaxError         → Erreur de syntaxe",
-          "  TypeError           → Mauvais type",
-          "  ValueError          → Mauvaise valeur",
-          "  IndexError          → Index hors limites",
-          "  KeyError            → Clé inexistante",
-          "  ZeroDivisionError   → Division par zéro",
-          "  AttributeError      → Attribut inexistant",
-          "  NameError           → Variable non définie",
-          "  FileNotFoundError   → Fichier introuvable",
-          "  ModuleNotFoundError → Module introuvable",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 TRY / EXCEPT",
-          "━━━━━━━━━━━━━━━",
-          "try:",
-          "    résultat = 10 / 0",
-          "except ZeroDivisionError as e:",
-          "    print(f'Erreur: {e}')",
-          "except (TypeError, ValueError):",
-          "    print('Type ou valeur incorrecte')",
-          "else:",
-          "    print('Pas d\\'erreur')",
-          "finally:",
-          "    print('Toujours exécuté')",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim().toLowerCase();
-        if (a === ch.answer) return null;
-        return [`✗ Ce n'est pas la bonne erreur. Tapez 'errors' pour la liste.`];
-      }
-      return null;
-    },
-    checkWin: (input) => input.startsWith("answer ") && input.slice(7).trim().toLowerCase() === ch.answer,
-    winResponse: [`✓ Correct ! C'est bien un ${ch.answer.charAt(0).toUpperCase() + ch.answer.slice(1)}.`, "", "⚠ À RETENIR :", "→ Toujours attraper les exceptions spécifiques, pas 'except:' seul.", "→ Le bloc 'finally' s'exécute dans tous les cas.", "→ EAFP (Easier to Ask Forgiveness) > LBYL en Python."],
-  };
-};
 
 const generateOOPLevel = () => {
   const challenges = [
@@ -874,17 +250,19 @@ const generateAlgoLevel = () => {
 // PROFILES
 // ═══════════════════════════════════════════════
 
+var D = DEV_LEVELS;
+
 const PROFILES = {
   "débutant": {
     label: "🟢 DÉBUTANT",
     desc: "Lycéen / Découverte — Bases Python",
     color: "#38bdf8",
     levels: () => [
-      generateVariablesLevel(),
-      generateConditionsLevel("débutant"),
-      generateLoopsLevel("débutant"),
-      generateListsLevel("débutant"),
-      generateFunctionsLevel("débutant"),
+      buildLevel(D.variables),
+      buildDifficultyLevel(D.conditions, "débutant"),
+      buildDifficultyLevel(D.loops, "débutant"),
+      buildDifficultyLevel(D.lists, "débutant"),
+      buildDifficultyLevel(D.functions, "débutant"),
       generateDebugLevel("débutant"),
     ],
   },
@@ -893,14 +271,14 @@ const PROFILES = {
     desc: "Étudiant Bac+2 — Python courant",
     color: "#facc15",
     levels: () => [
-      generateVariablesLevel(),
-      generateConditionsLevel("intermédiaire"),
-      generateLoopsLevel("intermédiaire"),
-      generateListsLevel("intermédiaire"),
-      generateStringsLevel(),
-      generateDictLevel(),
-      generateFunctionsLevel("intermédiaire"),
-      generateErrorsLevel(),
+      buildLevel(D.variables),
+      buildDifficultyLevel(D.conditions, "intermédiaire"),
+      buildDifficultyLevel(D.loops, "intermédiaire"),
+      buildDifficultyLevel(D.lists, "intermédiaire"),
+      buildLevel(D.strings),
+      buildLevel(D.dicts),
+      buildDifficultyLevel(D.functions, "intermédiaire"),
+      buildLevel(D.errors),
       generateDebugLevel("intermédiaire"),
     ],
   },
@@ -909,14 +287,14 @@ const PROFILES = {
     desc: "M1/M2 Dev — Python avancé",
     color: "#f87171",
     levels: () => [
-      generateConditionsLevel("expert"),
-      generateLoopsLevel("expert"),
-      generateListsLevel("expert"),
-      generateStringsLevel(),
-      generateDictLevel(),
-      generateFunctionsLevel("expert"),
+      buildDifficultyLevel(D.conditions, "expert"),
+      buildDifficultyLevel(D.loops, "expert"),
+      buildDifficultyLevel(D.lists, "expert"),
+      buildLevel(D.strings),
+      buildLevel(D.dicts),
+      buildDifficultyLevel(D.functions, "expert"),
       generateOOPLevel(),
-      generateErrorsLevel(),
+      buildLevel(D.errors),
       generateDebugLevel("expert"),
       generateAlgoLevel(),
     ],

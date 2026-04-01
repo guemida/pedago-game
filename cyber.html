@@ -9,6 +9,8 @@
     <script src="shared/utils.js"></script>
     <script src="shared/rain.js"></script>
     <script src="shared/game-engine.js"></script>
+    <script src="shared/level-builders.js"></script>
+    <script src="data/cyber-levels.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #root { height: 100%; width: 100%; }
@@ -17,6 +19,8 @@
 <body>
     <div id="root"></div>
     <script>
+
+var L = CYBER_LEVELS;
 
 const caesarShift = (text, shift) => {
   let result = "";
@@ -28,40 +32,6 @@ const caesarShift = (text, shift) => {
     }
   }
   return result;
-};
-
-const generateScanLevel = () => {
-  const targets = [
-    { ip: "192.168.1.42", ports: "22,8080", type: "SERVER" },
-    { ip: "10.0.0.17", ports: "22,443,3306", type: "DATABASE" },
-    { ip: "172.16.0.99", ports: "21,22,80", type: "WEB SERVER" },
-  ];
-  const target = pick(targets);
-  const decoys = shuffle([
-    { ip: "192.168.1.1", ports: "80,443", type: "ROUTER" },
-    { ip: "192.168.1.10", ports: "22,80", type: "PRINTER" },
-    { ip: "10.0.0.1", ports: "53,80", type: "DNS" },
-    { ip: "172.16.0.1", ports: "80,443", type: "GATEWAY" },
-    { ip: "192.168.1.25", ports: "554", type: "CAMERA" },
-    { ip: "10.0.0.50", ports: "25,587", type: "MAIL" },
-  ]).slice(0, 3);
-  return {
-    id: "scan", title: "RECONNAISSANCE",
-    mission: "Scannez le réseau pour identifier la cible vulnérable. Tapez 'help' pour les commandes.",
-    hint: "Tapez 'scan' puis connectez-vous à la cible marquée VULNÉRABLE.",
-    topic: "Scan réseau & Reconnaissance",
-    commands: {
-      help: { response: ["╔══════════════════════════════════════════════╗","║           COMMANDES DISPONIBLES              ║","╠══════════════════════════════════════════════╣","║  scan            - Scanner le réseau         ║","║  connect <ip>    - Se connecter à une cible  ║","║  nmap <ip>       - Détail des ports          ║","║  mission / hint / score                      ║","╚══════════════════════════════════════════════╝"] },
-      scan: { response: ["⟳ Scanning réseau...",...decoys.map((d) => "  ├─ " + d.ip.padEnd(16) + " [" + d.type + "]" + "".padEnd(10 - d.type.length) + "Port " + d.ports),"  └─ " + target.ip.padEnd(16) + " [" + target.type + "]" + "".padEnd(10 - target.type.length) + "Port " + target.ports + " ⚠ VULNÉRABLE","","→ Cible détectée ! Tapez 'connect " + target.ip + "'"] },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("connect ")) { const ip = input.slice(8).trim(); if (ip === target.ip) return null; return ["✗ Connexion refusée à " + ip]; }
-      if (input.startsWith("nmap ")) { const ip = input.slice(5).trim(); const found = [...decoys, target].find((d) => d.ip === ip); if (found) { return ["NMAP " + ip + ":", "  Type: " + found.type, "  Ports: " + found.ports + (found === target ? " ⚠ VULNÉRABLE" : "")]; } return ["✗ Hôte non trouvé."]; }
-      return null;
-    },
-    checkWin: (input) => input === "connect " + target.ip,
-    winResponse: ["✓ Connexion établie avec " + target.ip, "", "⚠ LEÇON : La reconnaissance est la 1ère étape d'un pentest.", "→ Outils réels : Nmap, Masscan, Shodan.", "→ Défense : fermer les ports inutiles, IDS/IPS."],
-  };
 };
 
 const generateBruteForceLevel = (difficulty) => {
@@ -223,54 +193,10 @@ const generateHashLevel = () => {
   };
 };
 
-const generateOSINTLevel = () => {
-  const targets = [
-    { name: "Alex Morin", username: "alexm_dev", bio: "Full-stack dev | Paris | Cat lover | Born 15/03/1995", posts: ["Deployed on AWS us-east-1 !","Birthday dinner 🎂","My cat Pixel turned 3 !","Working from Café de Flore"], password: "Pixel1503", hint: "Chat + date naissance JJMM." },
-    { name: "Sarah Benali", username: "sarah.benali", bio: "Marketing @TechCorp | Lyon | Dog mom to Oscar", posts: ["Oscar fête ses 5 ans !","Paris Marathon 4h12 !","Throwback wedding 07/07/2019","Working late..."], password: "Oscar0707", hint: "Chien + date importante JJMM." },
-  ];
-  const target = pick(targets);
-  return {
-    id: "osint", title: "OSINT - RENSEIGNEMENT",
-    mission: "Cible : " + target.name + " (@" + target.username + "). Tapez 'try <password>'.",
-    hint: target.hint, topic: "OSINT & Ingénierie Sociale",
-    commands: {
-      help: { response: ["╔══════════════════════════════════════════════╗","║  profile / posts / try <password> / explain  ║","╚══════════════════════════════════════════════╝"] },
-      profile: { response: ["👤 @" + target.username,"   " + target.name,"   Bio: " + target.bio,"   Followers: " + randInt(200,2000)] },
-      posts: { response: ["📱 @" + target.username + " :", ...target.posts.map((p,i) => "  " + ["🕐 2h","🕑 1j","🕒 3j","🕓 1sem"][i] + " │ " + p)] },
-      explain: { response: ["📖 OSINT","━━━━━━━━","Noms d'animaux → passwords","Dates perso → codes PIN","Outils : Maltego, Sherlock, Google Dorks"] },
-    },
-    defaultResponse: (input) => { if (input.startsWith("try ")) { if (input.slice(4).trim() === target.password) return null; return ["✗ Incorrect. Analysez le profil."]; } return null; },
-    checkWin: (input) => input.startsWith("try ") && input.slice(4).trim() === target.password,
-    winResponse: ["✓ ACCÈS ! Password : \"" + target.password + "\"","","→ Ne JAMAIS utiliser d'infos personnelles.","→ Utiliser un générateur aléatoire."],
-  };
-};
-
-const generateNetworkLevel = () => {
-  const suspicious = "192.168.1.105"; const malicious = "185.143.223.1";
-  const logs = ["10:01:03 | 192.168.1.100 → 192.168.1.1   | TCP | Port 80   | HTTP","10:01:05 | 192.168.1.100 → 8.8.8.8        | UDP | Port 53   | DNS","10:01:07 | 192.168.1.105 → 45.33.32.156   | TCP | Port 443  | TLS","10:01:09 | " + suspicious + " → " + malicious + "  | TCP | Port 4444 | DATA ████","10:01:11 | 192.168.1.100 → 192.168.1.1    | TCP | Port 443  | HTTPS","10:01:13 | " + malicious + " → " + suspicious + "  | TCP | Port 4444 | DATA ████","10:01:15 | 192.168.1.100 → 192.168.1.50   | TCP | Port 22   | SSH"];
-  return {
-    id: "network", title: "ANALYSE RÉSEAU",
-    mission: "Identifiez la machine compromise. Tapez 'logs' puis 'flag <ip>'.",
-    hint: "Port 4444 = Metasploit. flag " + suspicious, topic: "Analyse de trafic réseau",
-    commands: {
-      help: { response: ["╔══════════════════════════════════════════════╗","║  logs / whois <ip> / flag <ip> / explain     ║","╚══════════════════════════════════════════════╝"] },
-      logs: { response: ["📋 CAPTURE :", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", ...logs, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"] },
-      explain: { response: ["📖 ANALYSE RÉSEAU","━━━━━━━━━━━━━━━━━","Ports suspects : 4444=Metasploit, 5555=ADB","Outils : Wireshark, tcpdump, Suricata"] },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("whois ")) { const ip = input.slice(6).trim(); if (ip === malicious) return ["🔍 " + ip + " : Russie, Bulletproof Hosting ⚠"]; if (ip === suspicious) return ["🔍 " + ip + " : DESKTOP-PC105, j.martin"]; return ["🔍 " + ip + " : réseau local"]; }
-      if (input.startsWith("flag ")) { if (input.slice(5).trim() === suspicious) return null; return ["✗ Mauvaise IP."]; }
-      return null;
-    },
-    checkWin: (input) => input.startsWith("flag ") && input.slice(5).trim() === suspicious,
-    winResponse: ["✓ MACHINE COMPROMISE : " + suspicious,"  Reverse shell port 4444 vers " + malicious,"","→ Surveiller les ports non-standard.","→ Outils : Wireshark, Suricata, Splunk."],
-  };
-};
-
 const PROFILES = {
-  "débutant": { label: "🟢 DÉBUTANT", desc: "Lycéen / Curieux", color: "#0f0", levels: () => [generateScanLevel(), generateBruteForceLevel("débutant"), generateCaesarLevel("débutant"), generateBase64Level("débutant"), generatePhishingLevel("débutant")] },
-  "intermédiaire": { label: "🟡 INTERMÉDIAIRE", desc: "Étudiant IT / Bac+2", color: "#ff0", levels: () => [generateScanLevel(), generateBruteForceLevel("intermédiaire"), generateCaesarLevel("intermédiaire"), generateBase64Level("intermédiaire"), generateSQLiLevel("intermédiaire"), generateOSINTLevel(), generatePhishingLevel("intermédiaire")] },
-  "expert": { label: "🔴 EXPERT", desc: "M1/M2 Cyber", color: "#f44", levels: () => [generateScanLevel(), generateBruteForceLevel("expert"), generateCaesarLevel("expert"), generateBase64Level("expert"), generateHashLevel(), generateSQLiLevel("expert"), generateOSINTLevel(), generateNetworkLevel(), generatePhishingLevel("expert")] },
+  "débutant": { label: "🟢 DÉBUTANT", desc: "Lycéen / Curieux", color: "#0f0", levels: () => [buildLevel(L.scan), generateBruteForceLevel("débutant"), generateCaesarLevel("débutant"), generateBase64Level("débutant"), generatePhishingLevel("débutant")] },
+  "intermédiaire": { label: "🟡 INTERMÉDIAIRE", desc: "Étudiant IT / Bac+2", color: "#ff0", levels: () => [buildLevel(L.scan), generateBruteForceLevel("intermédiaire"), generateCaesarLevel("intermédiaire"), generateBase64Level("intermédiaire"), generateSQLiLevel("intermédiaire"), buildLevel(L.osint), generatePhishingLevel("intermédiaire")] },
+  "expert": { label: "🔴 EXPERT", desc: "M1/M2 Cyber", color: "#f44", levels: () => [buildLevel(L.scan), generateBruteForceLevel("expert"), generateCaesarLevel("expert"), generateBase64Level("expert"), generateHashLevel(), generateSQLiLevel("expert"), buildLevel(L.osint), buildLevel(L.network), generatePhishingLevel("expert")] },
 };
 
 var root = ReactDOM.createRoot(document.getElementById("root"));
