@@ -204,7 +204,7 @@ var PROMPT_LEVELS = {
     scenarios: [
       {
         q: "📋 CONTEXTE :\nVous utilisez une API d'IA pour deux cas d'usage :\n  A) Générer du code SQL à partir d'une description\n  B) Écrire des slogans publicitaires créatifs\n\nPour quel cas faut-il une température BASSE (proche de 0) ? Tapez 'answer A' ou 'answer B'.",
-        check: { type: "includes", keywords: ["a"] },
+        check: { type: "answer", answer: "a", alt: ["cas a", "le cas a", "a)", "réponse a"] },
         win: "✓ Cas A ! Le code SQL nécessite de la PRÉCISION (température basse ~0.1). Les slogans créatifs bénéficient d'une température haute (~0.8-1.0) pour plus de variété.",
         hint: "Le code doit être EXACT. Les slogans doivent être ORIGINAUX. Lequel demande de la rigueur ?",
         explain: ["📖 TEMPÉRATURE & PARAMÈTRES", "━━━━━━━━━━━━━━━━━━━━━━━━━━━", "La TEMPÉRATURE contrôle la 'créativité' de l'IA :", "", "  🧊 Basse (0 - 0.3) :", "    → Réponses prévisibles, précises", "    → Code, maths, extraction de données, traduction", "", "  🔥 Haute (0.7 - 1.0) :", "    → Réponses variées, créatives", "    → Brainstorming, rédaction créative, slogans", "", "  ⚖️ Moyenne (0.3 - 0.7) :", "    → Équilibre précision/créativité", "    → Rédaction professionnelle, résumés", "", "Autres paramètres : top_p, max_tokens, stop sequences"]

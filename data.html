@@ -235,10 +235,15 @@ function DataAIGame() {
       return;
     }
 
-    // Check answer
-    const isCorrect = lvl.answers.some(
-      (a) => lower === a.toLowerCase() || lower.includes(a.toLowerCase())
-    );
+    // Check answer. Long concept words (>=4) allow substring match
+    // ("c'est de l'overfitting"); short/numeric answers must appear as a
+    // standalone token (so "14" no longer matches the answer "4").
+    const tokens = lower.split(/[^0-9a-zàâäéèêëïîôöùûüç]+/i).filter(Boolean);
+    const isCorrect = lvl.answers.some((a) => {
+      const al = a.toLowerCase();
+      if (lower === al) return true;
+      return al.length >= 4 ? lower.includes(al) : tokens.includes(al);
+    });
 
     if (isCorrect) {
       const pts = 100;
