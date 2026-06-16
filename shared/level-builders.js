@@ -6,6 +6,7 @@
 
 var buildLevel;
 var buildDifficultyLevel;
+var buildChallengeLevel;
 
 (function () {
 
@@ -217,6 +218,79 @@ var buildDifficultyLevel;
     var winResponse = data.winTemplate
       ? data.winTemplate.map(function (line) { return line.replace(/\{answer\}/g, ch.answer); })
       : ["✓ Correct ! " + ch.answer];
+
+    return {
+      id: data.id,
+      title: data.title,
+      topic: data.topic,
+      mission: mission,
+      hint: ch.hint,
+      commands: commands,
+      checkWin: checkWin,
+      winResponse: winResponse,
+      defaultResponse: defaultResponse
+    };
+  };
+
+  // ═══════════════════════════════════════════════
+  // PUBLIC: Build a level from a pool of "answer"
+  // challenges. Handles both flat pools (data.challenges
+  // is an array) and difficulty-tiered pools
+  // (data.challenges[difficulty]).
+  //   match: "exact"    → answer/alt matched after normalize (default)
+  //   match: "includes" → answer exact OR any alt matched bidirectionally
+  // Optional: data.missionTemplate with {desc} {code} {error},
+  //   data.codeCommand (auto "code" command from ch.code),
+  //   data.winTemplate with {answer} {fix}.
+  // ═══════════════════════════════════════════════
+  buildChallengeLevel = function (data, difficulty) {
+    var pool = Array.isArray(data.challenges) ? data.challenges : data.challenges[difficulty];
+    var ch = pick(pool);
+    var normName = ch.normalize || data.normalize;
+
+    var indent = function (lines) { return lines.map(function (l) { return "  " + l; }); };
+
+    var mission;
+    if (data.missionTemplate) {
+      mission = data.missionTemplate
+        .replace(/\{desc\}/g, ch.desc || "")
+        .replace(/\{code\}/g, ch.code ? indent(ch.code).join("\n") : "")
+        .replace(/\{error\}/g, ch.error || "");
+    } else {
+      mission = (ch.desc || "") + (data.missionSuffix || "");
+    }
+
+    var matchAnswer = function (raw) {
+      var norm = applyNorm(raw, normName);
+      var main = applyNorm(ch.answer, normName);
+      if (norm === main) return true;
+      var alts = (ch.alt || []).map(function (a) { return applyNorm(a, normName); });
+      if (data.match === "includes") {
+        return alts.some(function (a) { return norm.indexOf(a) !== -1 || a.indexOf(norm) !== -1; });
+      }
+      return alts.indexOf(norm) !== -1;
+    };
+
+    var checkWin = function (input) {
+      if (!input.startsWith("answer ")) return false;
+      return matchAnswer(input.slice(7).trim());
+    };
+
+    var defaultResponse = function (input) {
+      if (input.startsWith("answer ")) {
+        return checkWin(input) ? null : [data.defaultMsg || "✗ Incorrect."];
+      }
+      return null;
+    };
+
+    var commands = mkCommands(data.commands);
+    if (data.codeCommand && ch.code) {
+      commands.code = { response: ["📋 CODE :"].concat(indent(ch.code)).concat(["", "Erreur : " + ch.error]) };
+    }
+
+    var winResponse = (data.winTemplate || ["✓ Correct ! {answer}"]).map(function (line) {
+      return line.replace(/\{answer\}/g, ch.answer).replace(/\{fix\}/g, ch.fix || "");
+    });
 
     return {
       id: data.id,

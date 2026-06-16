@@ -1,7 +1,11 @@
 // ═══════════════════════════════════════════════
 // CYBER LEVELS DATA — Pedago Game
-// Used by: cyber.html via buildLevel()
-// Only declarative levels; custom generators stay in cyber.html
+// Used by: cyber.html
+//   • Declarative levels (scan, osint, network) via buildLevel()
+//   • Content pools (bruteforce, caesar, base64, sqli, phishing,
+//     hash) consumed by the procedural generators in cyber.html
+//     — the logic stays inline (mutable state, btoa/atob, ciphers),
+//     only the editable content lives here.
 // ═══════════════════════════════════════════════
 
 var CYBER_LEVELS = {
@@ -164,6 +168,72 @@ var CYBER_LEVELS = {
           { pattern: "^flag ", msg: ["✗ Mauvaise IP."] }
         ]
       }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════
+  // CONTENT POOLS — procedural levels (logic in cyber.html)
+  // ═══════════════════════════════════════════════
+
+  bruteforce: {
+    maxAttempts: { "débutant": 10, "intermédiaire": 7, "expert": 5 },
+    passwords: {
+      "débutant": [{ pass: "admin", hint: "Login par défaut le plus courant." }, { pass: "password", hint: "Le mot de passe le plus utilisé au monde." }, { pass: "123456", hint: "La suite de chiffres la plus évidente." }],
+      "intermédiaire": [{ pass: "root", hint: "Compte superutilisateur Linux." }, { pass: "toor", hint: "Root à l'envers." }, { pass: "changeme", hint: "Password par défaut classique." }],
+      "expert": [{ pass: "P@ssw0rd", hint: "Leet speak basique." }, { pass: "Welcome1", hint: "Password initial en entreprise." }, { pass: "Summer2024", hint: "Pattern saisonnier+année." }]
+    },
+    wordlist: ["123456", "password", "admin", "root", "qwerty", "letmein", "welcome", "monkey", "dragon", "master", "abc123", "111111", "toor", "changeme", "P@ssw0rd", "Welcome1", "Summer2024", "Winter2023", "Company1", "Azerty1"]
+  },
+
+  caesar: {
+    messages: {
+      "débutant": ["ATTAQUE A MIDI", "MOT DE PASSE FRAGILE", "ALERTE SECURITE"],
+      "intermédiaire": ["RENDEZ VOUS AU SERVEUR NORD", "TRANSFERT DE DONNEES EN COURS", "CLEF COMPROMISE CHANGER URGENT"],
+      "expert": ["EXTRACTION FICHIER CONFIDENTIEL CONFIRME", "PROTOCOLE EVACUATION ACTIVE CODE ROUGE", "AGENT DOUBLE IDENTIFIE SECTEUR SEPT"]
+    },
+    shifts: { "débutant": [3, 5], "intermédiaire": [7, 11, 13], "expert": [17, 19, 23] }
+  },
+
+  base64: {
+    secrets: {
+      "débutant": ["Serveur Secret", "Admin Panel", "Root Access"],
+      "intermédiaire": ["mysql://admin:tiger@db.internal:3306", "api_key=sk-9f8e7d6c5b4a3210"],
+      "expert": ['{"user":"admin","role":"superadmin","token":"x7k9m2"}', "password_hash=5f4dcc3b5aa765d61d8327deb882cf99"]
+    }
+  },
+
+  sqli: {
+    scenarios: {
+      "intermédiaire": { table: "users", query: "SELECT * FROM users WHERE username='{INPUT}' AND password='{PASS}'", hint: "admin' --" },
+      "expert": { table: "accounts", query: "SELECT * FROM accounts WHERE login='{INPUT}' AND token=SHA256('{PASS}')", hint: "admin' UNION SELECT * FROM accounts --" }
+    }
+  },
+
+  phishing: {
+    emailSets: {
+      "débutant": [
+        { from: "[email protected]", subject: "Réunion vendredi", body: "Bonjour,\nRéunion à vendredi 14h, salle B204.\nCordialement, Marie", legit: true },
+        { from: "[email protected]", subject: "⚠ URGENT : Compte suspendu !", body: "Cher client,\nActivité suspecte.\n→ http://banque-france.security-check.xyz/login\n\nCompte BLOQUÉ dans 24h.", legit: false, indices: ["securite-banque.com ≠ site officiel", "URL: security-check.xyz → frauduleux", "Urgence artificielle"] },
+        { from: "[email protected]", subject: "Mise à jour sécurité", body: "Mise à jour sur https://support.microsoft.com\nPatch KB5034441.", legit: true }
+      ],
+      "intermédiaire": [
+        { from: "[email protected]", subject: "Vérification sécurité", body: "Suite à notre audit :\n→ https://microsoft-365-security.com/verify", legit: false, indices: ["microsoft-365-security.com ≠ microsoft.com", "Le 'o' est un zéro", "Microsoft ne demande jamais ça par email"] },
+        { from: "[email protected]", subject: "Formation Cybersécurité", body: "Inscription confirmée pour le 15 mars.\nLien Teams : https://teams.microsoft.com/meet/abc123", legit: true },
+        { from: "[email protected]", subject: "Document partagé", body: "Jean-Marc a partagé 'Budget_Q4.xlsx'.\n→ https://docs.google.com/spreadsheets/d/1a2b3c", legit: true }
+      ],
+      "expert": [
+        { from: "[email protected]", subject: "Re: Accès VPN - Ticket #4892", body: "Nouveau client VPN :\n→ https://vpn-corporate.entreprise-solutions.net/download\n\nInstaller avant vendredi.", legit: false, indices: ["entreprise-solutions.net ≠ domaine interne", "Téléchargement via email = suspect", "'Re:' sans conversation = social engineering"] },
+        { from: "[email protected]", subject: "Certificat SSL expire", body: "Certificat expire dans 7 jours.\nhttps://portal.azure.com/certificates", legit: true },
+        { from: "[email protected]", subject: "Facture #INV-2024-0892", body: "Facture janvier : 4 250 €\nhttps://facturation.ovhcloud.com/invoices/892", legit: true }
+      ]
+    }
+  },
+
+  hash: {
+    list: [
+      { plain: "password", md5: "5f4dcc3b5aa765d61d8327deb882cf99" },
+      { plain: "admin", md5: "21232f297a57a5a743894a0e4a801fc3" },
+      { plain: "letmein", md5: "0d107d09f5bbe40cade3de5c71e9e9b7" }
     ]
   }
 

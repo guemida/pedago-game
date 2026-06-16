@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════
 // DEV (PYTHON) LEVELS DATA — Pedago Game
-// Used by: dev.html via buildLevel() and buildDifficultyLevel()
-// Levels excluded: debug, OOP, algo (remain in dev.html)
+// Used by: dev.html via buildLevel(), buildDifficultyLevel(),
+//          buildChallengeLevel() (oop, algo, debug)
+// All levels are now data-driven; only pyEval (run command) stays inline.
 // ═══════════════════════════════════════════════
 
 var DEV_LEVELS = {
@@ -387,6 +388,145 @@ var DEV_LEVELS = {
       { q: "import blabla provoque quelle erreur ?", check: { type: "answer", answer: "modulenotfounderror" }, win: "✓ Correct ! C'est bien un ModuleNotFoundError.", hint: "Module inexistant → ModuleNotFoundError." }
     ],
     defaultFeedback: { prefix: "answer ", msg: ["✗ Ce n'est pas la bonne erreur. Tapez 'errors' pour la liste."] }
+  },
+
+  oop: {
+    id: "oop", title: "PROGRAMMATION OBJET", topic: "Classes, Héritage, OOP",
+    missionSuffix: " Tapez 'answer <réponse>'.",
+    defaultMsg: "✗ Incorrect.",
+    winTemplate: [
+      "✓ Correct ! {answer}",
+      "",
+      "⚠ À RETENIR :",
+      "→ __init__ initialise l'objet (constructeur).",
+      "→ self = référence à l'instance courante.",
+      "→ L'héritage : class Enfant(Parent)."
+    ],
+    commands: {
+      help: [
+        "╔══════════════════════════════════════════════╗",
+        "║  answer <val>    - Répondre                   ║",
+        "║  explain         - Cours sur les classes      ║",
+        "╚══════════════════════════════════════════════╝"
+      ],
+      explain: [
+        "📖 CLASSES PYTHON",
+        "━━━━━━━━━━━━━━━━━",
+        "class Animal:",
+        "    def __init__(self, nom):",
+        "        self.nom = nom",
+        "    def parler(self):",
+        "        return f'{self.nom} fait du bruit'",
+        "",
+        "class Chien(Animal):       # Héritage",
+        "    def parler(self):       # Override",
+        "        return f'{self.nom} aboie'",
+        "",
+        "rex = Chien('Rex')",
+        "rex.parler()  → 'Rex aboie'",
+        "",
+        "Concepts : encapsulation, héritage, polymorphisme",
+        "Méthodes spéciales : __init__, __str__, __repr__, __len__"
+      ]
+    },
+    challenges: [
+      { desc: "class Dog: def __init__(self, name): self.name = name. d = Dog('Rex'). Que vaut d.name ?", answer: "rex", normalize: "removeQuotes", hint: "self.name est initialisé avec 'Rex'." },
+      { desc: "Comment appelle-t-on la méthode __init__ d'une classe Python ?", answer: "constructeur", alt: ["constructor", "initialiseur", "initializer"], hint: "__init__ est le constructeur, appelé à la création de l'objet." },
+      { desc: "class A: x=1. class B(A): x=2. Que vaut B().x ?", answer: "2", hint: "B surcharge x. L'héritage donne priorité à la classe enfant." },
+      { desc: "Quel mot-clé utilise-t-on pour hériter d'une classe en Python ?", answer: "class", alt: ["class b(a):", "parenthèses", "()", "class b(a)"], hint: "class Enfant(Parent): → les parenthèses indiquent l'héritage." }
+    ]
+  },
+
+  algo: {
+    id: "algo", title: "ALGORITHMES & COMPLEXITÉ", topic: "Complexité, Tri, Recherche",
+    missionSuffix: " Tapez 'answer <réponse>'.",
+    defaultMsg: "✗ Incorrect.",
+    winTemplate: [
+      "✓ Correct ! {answer}",
+      "",
+      "⚠ À RETENIR :",
+      "→ Toujours penser à la complexité avant de coder.",
+      "→ set/dict pour les lookups fréquents.",
+      "→ sorted() est O(n log n) — difficile de faire mieux."
+    ],
+    commands: {
+      help: [
+        "╔══════════════════════════════════════════════╗",
+        "║  answer <val>    - Répondre                   ║",
+        "║  explain         - Cours sur la complexité    ║",
+        "╚══════════════════════════════════════════════╝"
+      ],
+      explain: [
+        "📖 COMPLEXITÉ ALGORITHMIQUE",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "O(1)       → Constant (accès dict/set)",
+        "O(log n)   → Logarithmique (binary search)",
+        "O(n)       → Linéaire (parcours liste)",
+        "O(n log n) → Quasi-linéaire (Timsort, mergesort)",
+        "O(n²)      → Quadratique (tri bulle, sélection)",
+        "O(2ⁿ)      → Exponentiel (sous-ensembles)",
+        "",
+        "Python : sorted() utilise Timsort (O(n log n)).",
+        "set/dict : lookup en O(1) grâce au hachage."
+      ]
+    },
+    challenges: [
+      { desc: "Quelle est la complexité de la recherche dans une liste triée avec la dichotomie (binary search) ?", answer: "o(log n)", alt: ["o(logn)", "log n", "logarithmique", "o(log(n))"], hint: "On divise par 2 à chaque étape → O(log n)." },
+      { desc: "Quelle est la complexité du tri par sélection (selection sort) ?", answer: "o(n^2)", alt: ["o(n²)", "o(n2)", "n carré", "quadratique", "n^2", "n²"], hint: "Deux boucles imbriquées → O(n²)." },
+      { desc: "Quel algorithme de tri utilise Python avec sorted() ?", answer: "timsort", alt: ["tim sort", "merge + insertion"], hint: "Timsort = hybride merge sort + insertion sort. Inventé par Tim Peters." },
+      { desc: "Quelle structure utiliser pour vérifier si un élément existe en O(1) ?", answer: "set", alt: ["dictionnaire", "dict", "hash", "hashset", "ensemble"], hint: "Les sets et dicts utilisent des tables de hachage → lookup O(1)." }
+    ]
+  },
+
+  debug: {
+    id: "debug", title: "DEBUGGING", topic: "Debugging, Erreurs courantes",
+    match: "includes",
+    codeCommand: true,
+    missionTemplate: "Trouvez le bug dans ce code :\n{code}\n\nErreur : {error}. Tapez 'answer <explication>'.",
+    defaultMsg: "✗ Pas exactement. Relisez le code et l'erreur.",
+    winTemplate: [
+      "✓ Bug trouvé !",
+      "  {fix}",
+      "",
+      "⚠ À RETENIR :",
+      "→ Lire le traceback de bas en haut.",
+      "→ Utiliser print() ou un debugger pour tracer.",
+      "→ Les erreurs les plus sournoises : aliasing et mutable defaults."
+    ],
+    commands: {
+      help: [
+        "╔══════════════════════════════════════════════╗",
+        "║  answer <fix>    - Expliquer le bug           ║",
+        "║  code            - Revoir le code             ║",
+        "║  explain         - Erreurs Python courantes   ║",
+        "╚══════════════════════════════════════════════╝"
+      ],
+      explain: [
+        "📖 BUGS PYTHON FRÉQUENTS",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
+        "• Oublier les : après if/for/def/class",
+        "• = (assignation) vs == (comparaison)",
+        "• Modifier une liste pendant l'itération",
+        "• Argument mutable par défaut (def f(lst=[]))",
+        "• Aliasing : y = x crée une référence, pas une copie",
+        "• Off-by-one : range(n) va de 0 à n-1",
+        "• Indentation incorrecte"
+      ]
+    },
+    challenges: {
+      "débutant": [
+        { code: ["def add(a, b)", "    return a + b"], error: "SyntaxError", fix: "Il manque les deux-points (:) après la définition.", answer: ":", alt: ["deux-points", "deux points", ": après def"], hint: "En Python, les blocs commencent par ':'." },
+        { code: ["x = 10", "if x = 10:", "    print('ok')"], error: "SyntaxError", fix: "Comparaison = vs ==.", answer: "==", alt: ["== au lieu de =", "double égal"], hint: "= est l'assignation, == est la comparaison." }
+      ],
+      "intermédiaire": [
+        { code: ["lst = [1, 2, 3]", "for i in range(len(lst)):", "    lst.append(i)"], error: "Boucle infinie", fix: "On modifie la liste pendant l'itération.", answer: "boucle infinie", alt: ["infinite loop", "la liste grandit", "modification pendant itération"], hint: "append() allonge la liste → len(lst) ne s'arrête jamais." },
+        { code: ["d = {'a': 1}", "print(d['b'])"], error: "KeyError", fix: "La clé 'b' n'existe pas.", answer: "keyerror", alt: ["key error", "clé inexistante"], hint: "Utilisez d.get('b', default) pour éviter le crash." }
+      ],
+      "expert": [
+        { code: ["def f(lst=[]):", "    lst.append(1)", "    return lst", "print(f())", "print(f())"], error: "Bug: [1] puis [1,1]", fix: "Argument mutable par défaut partagé entre appels.", answer: "mutable default", alt: ["argument mutable", "default mutable", "liste partagée", "mutable default argument"], hint: "Les arguments par défaut mutables sont partagés. Utilisez None." },
+        { code: ["x = [1, 2, 3]", "y = x", "y.append(4)", "print(x)"], error: "x vaut [1,2,3,4]", fix: "y est une référence vers x, pas une copie.", answer: "[1,2,3,4]", alt: ["reference", "aliasing", "même objet", "1,2,3,4"], hint: "y = x ne copie pas. Utilisez y = x.copy() ou y = x[:]." }
+      ]
+    }
   }
 
 };

@@ -43,210 +43,6 @@ const pyEval = (code) => {
 };
 
 // ═══════════════════════════════════════════════
-// CUSTOM LEVELS (logic too complex for data files)
-// ═══════════════════════════════════════════════
-
-const generateOOPLevel = () => {
-  const challenges = [
-    { desc: "class Dog: def __init__(self, name): self.name = name. d = Dog('Rex'). Que vaut d.name ?", answer: "rex", normalize: (a) => a.replace(/['"]/g, "").toLowerCase(), hint: "self.name est initialisé avec 'Rex'." },
-    { desc: "Comment appelle-t-on la méthode __init__ d'une classe Python ?", answer: "constructeur", alt: ["constructor", "initialiseur", "initializer"], hint: "__init__ est le constructeur, appelé à la création de l'objet." },
-    { desc: "class A: x=1. class B(A): x=2. Que vaut B().x ?", answer: "2", hint: "B surcharge x. L'héritage donne priorité à la classe enfant." },
-    { desc: "Quel mot-clé utilise-t-on pour hériter d'une classe en Python ?", answer: "class", alt: ["class b(a):", "parenthèses", "()", "class b(a)"], hint: "class Enfant(Parent): → les parenthèses indiquent l'héritage." },
-  ];
-
-  const ch = pick(challenges);
-
-  return {
-    id: "oop",
-    title: "PROGRAMMATION OBJET",
-    mission: `${ch.desc} Tapez 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Classes, Héritage, OOP",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  explain         - Cours sur les classes      ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 CLASSES PYTHON",
-          "━━━━━━━━━━━━━━━━━",
-          "class Animal:",
-          "    def __init__(self, nom):",
-          "        self.nom = nom",
-          "    def parler(self):",
-          "        return f'{self.nom} fait du bruit'",
-          "",
-          "class Chien(Animal):       # Héritage",
-          "    def parler(self):       # Override",
-          "        return f'{self.nom} aboie'",
-          "",
-          "rex = Chien('Rex')",
-          "rex.parler()  → 'Rex aboie'",
-          "",
-          "Concepts : encapsulation, héritage, polymorphisme",
-          "Méthodes spéciales : __init__, __str__, __repr__, __len__",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim();
-        const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-        const exp = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-        const alts = ch.alt ? ch.alt.map((x) => x.toLowerCase()) : [];
-        if (norm === exp || alts.includes(norm)) return null;
-        return [`✗ Incorrect.`];
-      }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim();
-      const norm = ch.normalize ? ch.normalize(a) : a.toLowerCase();
-      const exp = ch.normalize ? ch.normalize(ch.answer) : ch.answer.toLowerCase();
-      const alts = ch.alt ? ch.alt.map((x) => x.toLowerCase()) : [];
-      return norm === exp || alts.includes(norm);
-    },
-    winResponse: [`✓ Correct ! ${ch.answer}`, "", "⚠ À RETENIR :", "→ __init__ initialise l'objet (constructeur).", "→ self = référence à l'instance courante.", "→ L'héritage : class Enfant(Parent)."],
-  };
-};
-
-const generateDebugLevel = (difficulty) => {
-  const bugs = {
-    "débutant": [
-      { code: ["def add(a, b)", "    return a + b"], error: "SyntaxError", fix: "Il manque les deux-points (:) après la définition.", answer: ":", alt: ["deux-points", "deux points", ": après def"], hint: "En Python, les blocs commencent par ':'." },
-      { code: ["x = 10", "if x = 10:", "    print('ok')"], error: "SyntaxError", fix: "Comparaison = vs ==.", answer: "==", alt: ["== au lieu de =", "double égal"], hint: "= est l'assignation, == est la comparaison." },
-    ],
-    "intermédiaire": [
-      { code: ["lst = [1, 2, 3]", "for i in range(len(lst)):", "    lst.append(i)"], error: "Boucle infinie", fix: "On modifie la liste pendant l'itération.", answer: "boucle infinie", alt: ["infinite loop", "la liste grandit", "modification pendant itération"], hint: "append() allonge la liste → len(lst) ne s'arrête jamais." },
-      { code: ["d = {'a': 1}", "print(d['b'])"], error: "KeyError", fix: "La clé 'b' n'existe pas.", answer: "keyerror", alt: ["key error", "clé inexistante"], hint: "Utilisez d.get('b', default) pour éviter le crash." },
-    ],
-    "expert": [
-      { code: ["def f(lst=[]):", "    lst.append(1)", "    return lst", "print(f())", "print(f())"], error: "Bug: [1] puis [1,1]", fix: "Argument mutable par défaut partagé entre appels.", answer: "mutable default", alt: ["argument mutable", "default mutable", "liste partagée", "mutable default argument"], hint: "Les arguments par défaut mutables sont partagés. Utilisez None." },
-      { code: ["x = [1, 2, 3]", "y = x", "y.append(4)", "print(x)"], error: "x vaut [1,2,3,4]", fix: "y est une référence vers x, pas une copie.", answer: "[1,2,3,4]", alt: ["reference", "aliasing", "même objet", "1,2,3,4"], hint: "y = x ne copie pas. Utilisez y = x.copy() ou y = x[:]." },
-    ],
-  };
-
-  const ch = pick(bugs[difficulty]);
-
-  return {
-    id: "debug",
-    title: "DEBUGGING",
-    mission: `Trouvez le bug dans ce code :\n${ch.code.map((l) => "  " + l).join("\n")}\n\nErreur : ${ch.error}. Tapez 'answer <explication>'.`,
-    hint: ch.hint,
-    topic: "Debugging, Erreurs courantes",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <fix>    - Expliquer le bug           ║",
-          "║  code            - Revoir le code             ║",
-          "║  explain         - Erreurs Python courantes   ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      code: {
-        response: ["📋 CODE :", ...ch.code.map((l) => `  ${l}`), "", `Erreur : ${ch.error}`],
-      },
-      explain: {
-        response: [
-          "📖 BUGS PYTHON FRÉQUENTS",
-          "━━━━━━━━━━━━━━━━━━━━━━━━",
-          "• Oublier les : après if/for/def/class",
-          "• = (assignation) vs == (comparaison)",
-          "• Modifier une liste pendant l'itération",
-          "• Argument mutable par défaut (def f(lst=[]))",
-          "• Aliasing : y = x crée une référence, pas une copie",
-          "• Off-by-one : range(n) va de 0 à n-1",
-          "• Indentation incorrecte",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim().toLowerCase();
-        const expected = ch.answer.toLowerCase();
-        const alts = ch.alt ? ch.alt.map((x) => x.toLowerCase()) : [];
-        if (a === expected || alts.some((alt) => a.includes(alt) || alt.includes(a))) return null;
-        return [`✗ Pas exactement. Relisez le code et l'erreur.`];
-      }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim().toLowerCase();
-      const expected = ch.answer.toLowerCase();
-      const alts = ch.alt ? ch.alt.map((x) => x.toLowerCase()) : [];
-      return a === expected || alts.some((alt) => a.includes(alt) || alt.includes(a));
-    },
-    winResponse: [`✓ Bug trouvé !`, `  ${ch.fix}`, "", "⚠ À RETENIR :", "→ Lire le traceback de bas en haut.", "→ Utiliser print() ou un debugger pour tracer.", "→ Les erreurs les plus sournoises : aliasing et mutable defaults."],
-  };
-};
-
-const generateAlgoLevel = () => {
-  const challenges = [
-    { desc: "Quelle est la complexité de la recherche dans une liste triée avec la dichotomie (binary search) ?", answer: "o(log n)", alt: ["o(logn)", "log n", "logarithmique", "o(log(n))"], hint: "On divise par 2 à chaque étape → O(log n)." },
-    { desc: "Quelle est la complexité du tri par sélection (selection sort) ?", answer: "o(n^2)", alt: ["o(n²)", "o(n2)", "n carré", "quadratique", "n^2", "n²"], hint: "Deux boucles imbriquées → O(n²)." },
-    { desc: "Quel algorithme de tri utilise Python avec sorted() ?", answer: "timsort", alt: ["tim sort", "merge + insertion"], hint: "Timsort = hybride merge sort + insertion sort. Inventé par Tim Peters." },
-    { desc: "Quelle structure utiliser pour vérifier si un élément existe en O(1) ?", answer: "set", alt: ["dictionnaire", "dict", "hash", "hashset", "ensemble"], hint: "Les sets et dicts utilisent des tables de hachage → lookup O(1)." },
-  ];
-
-  const ch = pick(challenges);
-
-  return {
-    id: "algo",
-    title: "ALGORITHMES & COMPLEXITÉ",
-    mission: `${ch.desc} Tapez 'answer <réponse>'.`,
-    hint: ch.hint,
-    topic: "Complexité, Tri, Recherche",
-    commands: {
-      help: {
-        response: [
-          "╔══════════════════════════════════════════════╗",
-          "║  answer <val>    - Répondre                   ║",
-          "║  explain         - Cours sur la complexité    ║",
-          "╚══════════════════════════════════════════════╝",
-        ],
-      },
-      explain: {
-        response: [
-          "📖 COMPLEXITÉ ALGORITHMIQUE",
-          "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-          "O(1)       → Constant (accès dict/set)",
-          "O(log n)   → Logarithmique (binary search)",
-          "O(n)       → Linéaire (parcours liste)",
-          "O(n log n) → Quasi-linéaire (Timsort, mergesort)",
-          "O(n²)      → Quadratique (tri bulle, sélection)",
-          "O(2ⁿ)      → Exponentiel (sous-ensembles)",
-          "",
-          "Python : sorted() utilise Timsort (O(n log n)).",
-          "set/dict : lookup en O(1) grâce au hachage.",
-        ],
-      },
-    },
-    defaultResponse: (input) => {
-      if (input.startsWith("answer ")) {
-        const a = input.slice(7).trim().toLowerCase();
-        if (a === ch.answer || (ch.alt && ch.alt.some((x) => x.toLowerCase() === a))) return null;
-        return [`✗ Incorrect.`];
-      }
-      return null;
-    },
-    checkWin: (input) => {
-      if (!input.startsWith("answer ")) return false;
-      const a = input.slice(7).trim().toLowerCase();
-      return a === ch.answer || (ch.alt && ch.alt.some((x) => x.toLowerCase() === a));
-    },
-    winResponse: [`✓ Correct ! ${ch.answer}`, "", "⚠ À RETENIR :", "→ Toujours penser à la complexité avant de coder.", "→ set/dict pour les lookups fréquents.", "→ sorted() est O(n log n) — difficile de faire mieux."],
-  };
-};
-
-// ═══════════════════════════════════════════════
 // PROFILES
 // ═══════════════════════════════════════════════
 
@@ -263,7 +59,7 @@ const PROFILES = {
       buildDifficultyLevel(D.loops, "débutant"),
       buildDifficultyLevel(D.lists, "débutant"),
       buildDifficultyLevel(D.functions, "débutant"),
-      generateDebugLevel("débutant"),
+      buildChallengeLevel(D.debug, "débutant"),
     ],
   },
   "intermédiaire": {
@@ -279,7 +75,7 @@ const PROFILES = {
       buildLevel(D.dicts),
       buildDifficultyLevel(D.functions, "intermédiaire"),
       buildLevel(D.errors),
-      generateDebugLevel("intermédiaire"),
+      buildChallengeLevel(D.debug, "intermédiaire"),
     ],
   },
   "expert": {
@@ -293,10 +89,10 @@ const PROFILES = {
       buildLevel(D.strings),
       buildLevel(D.dicts),
       buildDifficultyLevel(D.functions, "expert"),
-      generateOOPLevel(),
+      buildChallengeLevel(D.oop),
       buildLevel(D.errors),
-      generateDebugLevel("expert"),
-      generateAlgoLevel(),
+      buildChallengeLevel(D.debug, "expert"),
+      buildChallengeLevel(D.algo),
     ],
   },
 };
